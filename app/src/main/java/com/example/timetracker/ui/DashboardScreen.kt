@@ -17,12 +17,10 @@ import com.example.timetracker.data.ActiveState
 @Composable
 fun DashboardScreen(
     uiState: TrackerUiState,
-    isNotificationEnabled: Boolean,
     onNavigateToHistory: () -> Unit,
     onStateChange: (ActiveState) -> Unit,
     onResetCurrent: () -> Unit,
-    onForceSave: () -> Unit,
-    onToggleNotification: (Boolean) -> Unit
+    onForceSave: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -105,27 +103,6 @@ fun DashboardScreen(
                     context.startActivity(intent)
                 }, modifier = Modifier.weight(1f)) {
                     Text("Check for Updates")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Toggles
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Show Notification")
-                        Switch(
-                            checked = isNotificationEnabled,
-                            onCheckedChange = onToggleNotification
-                        )
-                    }
                 }
             }
         }

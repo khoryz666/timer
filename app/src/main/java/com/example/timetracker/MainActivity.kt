@@ -15,7 +15,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -23,36 +22,24 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.timetracker.data.LocalDatabase
-import com.example.timetracker.data.TrackerPreferences
 import com.example.timetracker.service.TimeTrackerService
 import com.example.timetracker.ui.DashboardScreen
 import com.example.timetracker.ui.HistoryScreen
 import com.example.timetracker.ui.TrackerViewModel
 import com.example.timetracker.ui.theme.TimeTrackerTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-
-    private lateinit var prefs: TrackerPreferences
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
             manageForegroundService(true)
-        } else {
-            // Permission denied, handle gracefully (e.g., reset toggle in UI)
-            CoroutineScope(Dispatchers.IO).launch {
-                prefs.setEnableService(false)
-            }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        prefs = TrackerPreferences(applicationContext)
 
         // Start Service Unconditionally
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -76,7 +63,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    TimeTrackerApp(prefs, applicationContext as android.app.Application)
+                    TimeTrackerApp(applicationContext as android.app.Application)
                 }
             }
         }
@@ -99,27 +86,21 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TimeTrackerApp(prefs: TrackerPreferences, application: android.app.Application) {
+fun TimeTrackerApp(application: android.app.Application) {
     val navController = rememberNavController()
     val viewModel: TrackerViewModel = viewModel(
         factory = androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.getInstance(application)
     )
-    val coroutineScope = rememberCoroutineScope()
 
     NavHost(navController = navController, startDestination = "dashboard") {
         composable("dashboard") {
             val uiState by viewModel.uiState.collectAsState()
-            val isNotificationEnabled by prefs.showNotificationFlow.collectAsState(initial = false)
             DashboardScreen(
                 uiState = uiState,
-                isNotificationEnabled = isNotificationEnabled,
                 onNavigateToHistory = { navController.navigate("history") },
                 onStateChange = { newState -> viewModel.onButtonPress(newState) },
                 onResetCurrent = { viewModel.resetActiveTimer() },
-                onForceSave = { viewModel.forceSaveCurrentProgress() },
-                onToggleNotification = { enabled -> 
-                    coroutineScope.launch { prefs.setShowNotification(enabled) } 
-                }
+                onForceSave = { viewModel.forceSaveCurrentProgress() }
             )
         }
         composable("history") {

@@ -17,7 +17,6 @@ class TrackerPreferences(private val context: Context) {
     companion object {
         val ACTIVE_STATE_KEY = stringPreferencesKey("active_state")
         val START_TIME_KEY = longPreferencesKey("start_time")
-        val SHOW_NOTIFICATION_KEY = stringPreferencesKey("show_notification") // "true" or "false"
     }
 
     val activeStateFlow: Flow<ActiveState> = context.dataStore.data.map { preferences ->
@@ -33,20 +32,10 @@ class TrackerPreferences(private val context: Context) {
         preferences[START_TIME_KEY] ?: 0L
     }
 
-    val showNotificationFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        (preferences[SHOW_NOTIFICATION_KEY] ?: "false").toBoolean()
-    }
-
     suspend fun setActiveState(state: ActiveState, startTime: Long) {
         context.dataStore.edit { preferences ->
             preferences[ACTIVE_STATE_KEY] = state.name
             preferences[START_TIME_KEY] = startTime
-        }
-    }
-
-    suspend fun setShowNotification(show: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[SHOW_NOTIFICATION_KEY] = show.toString()
         }
     }
 }
