@@ -12,7 +12,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.example.timetracker.MainActivity
 import com.example.timetracker.data.ActiveState
-import com.example.timetracker.data.TrackerPreferences
+import com.example.timetracker.data.TrackerRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -20,7 +20,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import com.example.timetracker.data.LocalDatabase
 import com.example.timetracker.data.TimeRecord
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -30,12 +29,12 @@ class TimeTrackerService : Service() {
 
     private val serviceJob = Job()
     private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
-    private lateinit var prefs: TrackerPreferences
+    private lateinit var repository: TrackerRepository
 
     companion object {
         const val CHANNEL_ID = "TimeTrackerChannel"
         const val NOTIFICATION_ID = 1
-        
+
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP_SERVICE = "ACTION_STOP_SERVICE"
         const val ACTION_WORK = "ACTION_WORK"
@@ -45,7 +44,7 @@ class TimeTrackerService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        prefs = TrackerPreferences(applicationContext)
+        repository = TrackerRepository(applicationContext)
         createNotificationChannel()
     }
 
@@ -67,21 +66,21 @@ class TimeTrackerService : Service() {
 
     private fun updateState(newState: ActiveState) {
         serviceScope.launch {
-            prefs.setActiveState(newState, System.currentTimeMillis())
+            // Goes through the shared repository so switching via the notification
+            // persists the outgoing state's elapsed time exactly like the in-app buttons do.
+            repository.switchState(newState)
         }
     }
 
     private fun startForegroundService() {
         startForeground(NOTIFICATION_ID, buildNotification("Loading...", ActiveState.IDLE))
 
-        val timeRecordDao = LocalDatabase.getDatabase(applicationContext).timeRecordDao()
-
         // Monitor state and update notification text dynamically
          serviceScope.launch {
              combine(
-                 prefs.activeStateFlow, 
-                 prefs.startTimeFlow,
-                 timeRecordDao.getAllRecordsDescending()
+                 repository.activeStateFlow,
+                 repository.startTimeFlow,
+                 repository.allRecordsFlow()
              ) { state, startTime, records ->
                  val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
                  val todayRecord = records.find { it.date == dateStr } ?: TimeRecord(date = dateStr)
@@ -90,14 +89,14 @@ class TimeTrackerService : Service() {
                  while(true) {
                      val now = System.currentTimeMillis()
                      val activeTicking = if (state != ActiveState.IDLE) now - startTime else 0L
-                     
+
                      val baseDuration = when(state) {
                          ActiveState.WORK -> record.workDurationMs
                          ActiveState.SELF -> record.selfDurationMs
                          ActiveState.SLEEP -> record.sleepDurationMs
                          else -> 0L
                      }
-                     
+
                      updateNotification(state, baseDuration + activeTicking)
                      delay(1000L) // Update every second to keep notification ticking
                  }
@@ -115,7 +114,7 @@ class TimeTrackerService : Service() {
         }
 
         val text = if (state == ActiveState.IDLE) "Ready to track time" else "$stateName: $timeString"
-        
+
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, buildNotification(text, state))
     }
@@ -127,7 +126,7 @@ class TimeTrackerService : Service() {
         val pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_today) 
+            .setSmallIcon(android.R.drawable.ic_menu_today)
             .setContentTitle("Time Tracker")
             .setContentText(text)
             .setContentIntent(pendingIntent)
@@ -157,7 +156,7 @@ class TimeTrackerService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Time Tracker Running"
             val descriptionText = "Displays the active timer"
-            val importance = NotificationManager.IMPORTANCE_LOW 
+            val importance = NotificationManager.IMPORTANCE_LOW
             val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
                 description = descriptionText
             }
@@ -173,6 +172,6 @@ class TimeTrackerService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? {
-        return null 
+        return null
     }
 }
