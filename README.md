@@ -1,20 +1,41 @@
 # Time Tracker
 
-A highly efficient, zero-resource time tracking Android application designed to cleanly separate and record your daily activities. It is built natively for Android, enforcing a strict dark mode aesthetic and utilizing background-friendly timestamp math rather than battery-draining timer loops.
+A minimal Android app for tracking daily time across three categories: **Work**, **Self**, and **Sleep**.
 
 ## Features
 
-- **Three Core Categories**: Track time across `Work`, `Self`, and `Sleep`. 
-- **Zero-Resource Background Tracking**: The app records the precise start timestamp and defers math calculations until the UI is actively viewed, keeping background battery drain to an absolute zero.
-- **Persistent Notification**: Keep track of your active timer with a persistent foreground service notification that is fully perfectly synchronized with the app UI.
-- **Quick Actions**: Switch between Work, Self, and Sleep directly from the notification shade without ever opening the app!
-- **Local History**: A History screen that safely stores your daily records grouped by date (YYYY-MM-DD), built on a robust local SQLite database.
-- **Midnight Rollover Handling**: Sessions that cross midnight seamlessly attribute their full duration blocks to the correct chronological end date.
-- **In-App Updater**: Check for updates directly within the app, which links to the GitHub Releases page to install the latest `.apk`.
+- Track time across Work, Self, and Sleep
+- Timestamp-based tracking — no background loop, no battery drain while idle
+- Persistent notification with quick-switch actions (change category without opening the app)
+- Local history grouped by day
+- Sessions that cross midnight are attributed to the day they end on
 
-## Installation
+## Setup
 
-1. Navigate to the [Releases](https://github.com/khoryz666/timetracker/releases) page.
-2. Download the latest `TimeTracker.apk` file.
-3. Open the downloaded file on your Android device (you may need to allow your browser to "Install unknown apps").
-4. Subsequent updates will install over the old app safely without deleting your local timer history!
+Dependencies (JDK, Android SDK, build tools, emulator) are declared in `flake.nix`.
+
+```sh
+direnv allow   # or: nix develop
+```
+
+Then build/run like any Android project:
+
+```sh
+./gradlew assembleDebug
+```
+
+### Emulator on WSL
+
+The emulator needs `/dev/kvm` access for hardware acceleration. If your user isn't in the `kvm` group yet:
+
+```sh
+sudo usermod -aG kvm $USER
+```
+
+Then close and reopen your WSL session (group membership only applies to new sessions).
+
+## Install
+
+1. Grab the latest `TimeTracker.apk` from [Releases](https://github.com/khoryz666/timetracker/releases).
+2. Install it (allow "unknown apps" if prompted).
+3. Later updates install over the old app without losing your history.
