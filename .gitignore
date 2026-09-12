@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Nix / direnv
+.direnv/
+.envrc.local
+result
