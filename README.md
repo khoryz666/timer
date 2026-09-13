@@ -75,12 +75,12 @@ git push origin vX.Y.Z
 Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which:
 1. Runs `./gradlew testReleaseUnitTest`
 2. Builds `./gradlew assembleRelease -PversionName=X.Y.Z -PversionCode=N` (minified with R8, signed with the committed release keystore — an official release build, not a debug build)
-3. Publishes `Timer.apk` to a new [GitHub Release](https://github.com/khoryz666/timer/releases) named after the tag, with auto-generated release notes
+3. Publishes `Timer-X.Y.Z.apk` to a new [GitHub Release](https://github.com/khoryz666/timer/releases) named after the tag, with auto-generated release notes
 
 `versionCode` is derived from the tag as `major*1_000_000 + minor*1_000 + patch`, so tags must be plain `vMAJOR.MINOR.PATCH` (e.g. `v1.2.3`).
 
 ## Install
 
-1. Grab the latest `Timer.apk` from [Releases](https://github.com/khoryz666/timer/releases).
+1. Grab the latest `Timer-X.Y.Z.apk` from [Releases](https://github.com/khoryz666/timer/releases).
 2. Install it (allow "unknown apps" if prompted).
 3. Later updates install over the old app without losing your history.
