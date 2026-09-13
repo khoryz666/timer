@@ -56,6 +56,20 @@ android {
             isReturnDefaultValues = true
         }
     }
+    lint {
+        // The navigation-compose lint-checks jar throws NoClassDefFoundError:
+        // androidx/navigation/lint/UtilKt on this AGP/navigation-compose combination - a bug
+        // in the jar itself, not our code (we use plain String routes, not the type-safe
+        // @Serializable routes several of these checks are designed for). Disabling the whole
+        // detector set rather than chasing each one individually as it surfaces.
+        disable += setOf(
+            "WrongNavigateRouteType",
+            "WrongStartDestinationType",
+            "ComposableDestinationInComposeScope",
+            "ComposableNavGraphInComposeScope",
+            "UnrememberedGetBackStackEntry"
+        )
+    }
 }
 
 dependencies {
