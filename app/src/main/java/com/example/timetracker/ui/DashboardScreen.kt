@@ -35,7 +35,7 @@ fun DashboardScreen(
                     IconButton(onClick = {
                         val intent = Intent(
                             Intent.ACTION_VIEW,
-                            Uri.parse("https://github.com/khoryz666/TimeTracker/releases/latest")
+                            Uri.parse("https://github.com/khoryz666/timer/releases/latest")
                         )
                         context.startActivity(intent)
                     }) {
