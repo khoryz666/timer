@@ -19,12 +19,21 @@ class HistoryScreenTest {
         composeRule.setContent {
             HistoryScreen(
                 records = listOf(
-                    TimeRecord(date = "2026-01-01", workDurationMs = 3_600_000L)
+                    TimeRecord(
+                        date = "2026-01-01",
+                        workDurationMs = 3_600_000L,
+                        selfDurationMs = 1_800_000L
+                    )
                 )
             )
         }
 
         composeRule.onNodeWithText("2026-01-01").assertExists()
-        composeRule.onNodeWithText("Work: 01 h 00 m 00 s").assertExists()
+        composeRule.onNodeWithText("Work").assertExists()
+        composeRule.onNodeWithText("01 h 00 m 00 s").assertExists()
+        composeRule.onNodeWithText("Self").assertExists()
+        composeRule.onNodeWithText("00 h 30 m 00 s").assertExists()
+        // Day total (1h + 30m), distinct from either individual category's text above.
+        composeRule.onNodeWithText("01 h 30 m 00 s").assertExists()
     }
 }
