@@ -10,16 +10,18 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "tracker_prefs")
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "tracker_prefs")
 
-class TrackerPreferences(private val context: Context) {
+class TrackerPreferences(private val dataStore: DataStore<Preferences>) {
+
+    constructor(context: Context) : this(context.dataStore)
 
     companion object {
         val ACTIVE_STATE_KEY = stringPreferencesKey("active_state")
         val START_TIME_KEY = longPreferencesKey("start_time")
     }
 
-    val activeStateFlow: Flow<ActiveState> = context.dataStore.data.map { preferences ->
+    val activeStateFlow: Flow<ActiveState> = dataStore.data.map { preferences ->
         val stateString = preferences[ACTIVE_STATE_KEY] ?: ActiveState.IDLE.name
         try {
             ActiveState.valueOf(stateString)
@@ -28,12 +30,12 @@ class TrackerPreferences(private val context: Context) {
         }
     }
 
-    val startTimeFlow: Flow<Long> = context.dataStore.data.map { preferences ->
+    val startTimeFlow: Flow<Long> = dataStore.data.map { preferences ->
         preferences[START_TIME_KEY] ?: 0L
     }
 
     suspend fun setActiveState(state: ActiveState, startTime: Long) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[ACTIVE_STATE_KEY] = state.name
             preferences[START_TIME_KEY] = startTime
         }

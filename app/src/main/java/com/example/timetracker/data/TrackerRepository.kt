@@ -12,10 +12,14 @@ import java.util.Locale
  * Shared by the UI (TrackerViewModel) and the notification quick actions
  * (TimeTrackerService) so both paths persist elapsed time identically.
  */
-class TrackerRepository(context: Context) {
-
-    private val prefs = TrackerPreferences(context)
-    private val dao = LocalDatabase.getDatabase(context).timeRecordDao()
+class TrackerRepository(
+    private val prefs: TrackerPreferences,
+    private val dao: TimeRecordDao
+) {
+    constructor(context: Context) : this(
+        TrackerPreferences(context),
+        LocalDatabase.getDatabase(context).timeRecordDao()
+    )
 
     val activeStateFlow: Flow<ActiveState> = prefs.activeStateFlow
     val startTimeFlow: Flow<Long> = prefs.startTimeFlow
