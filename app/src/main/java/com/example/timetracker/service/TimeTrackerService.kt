@@ -13,17 +13,12 @@ import androidx.core.app.NotificationCompat
 import com.example.timetracker.MainActivity
 import com.example.timetracker.data.ActiveState
 import com.example.timetracker.data.TrackerRepository
+import com.example.timetracker.util.TimeFormatter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import com.example.timetracker.data.TimeRecord
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class TimeTrackerService : Service() {
 
@@ -40,11 +35,14 @@ class TimeTrackerService : Service() {
         const val ACTION_WORK = "ACTION_WORK"
         const val ACTION_SELF = "ACTION_SELF"
         const val ACTION_SLEEP = "ACTION_SLEEP"
+
+        /** Test seam: overridden in tests to hand the service an in-memory repository. */
+        internal var repositoryFactory: (Context) -> TrackerRepository = { TrackerRepository(it) }
     }
 
     override fun onCreate() {
         super.onCreate()
-        repository = TrackerRepository(applicationContext)
+        repository = repositoryFactory(applicationContext)
         createNotificationChannel()
     }
 
@@ -75,38 +73,22 @@ class TimeTrackerService : Service() {
     private fun startForegroundService() {
         startForeground(NOTIFICATION_ID, buildNotification("Loading...", ActiveState.IDLE))
 
-        // Monitor state and update notification text dynamically
-         serviceScope.launch {
-             combine(
-                 repository.activeStateFlow,
-                 repository.startTimeFlow,
-                 repository.allRecordsFlow()
-             ) { state, startTime, records ->
-                 val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-                 val todayRecord = records.find { it.date == dateStr } ?: TimeRecord(date = dateStr)
-                 Triple(state, startTime, todayRecord)
-             }.collectLatest { (state, startTime, record) ->
-                 while(true) {
-                     val now = System.currentTimeMillis()
-                     val activeTicking = if (state != ActiveState.IDLE) now - startTime else 0L
-
-                     val baseDuration = when(state) {
-                         ActiveState.WORK -> record.workDurationMs
-                         ActiveState.SELF -> record.selfDurationMs
-                         ActiveState.SLEEP -> record.sleepDurationMs
-                         else -> 0L
-                     }
-
-                     updateNotification(state, baseDuration + activeTicking)
-                     delay(1000L) // Update every second to keep notification ticking
-                 }
-             }
-         }
+        serviceScope.launch {
+            repository.snapshotFlow().collect { snapshot ->
+                val baseDuration = when (snapshot.activeState) {
+                    ActiveState.WORK -> snapshot.workDurationMs
+                    ActiveState.SELF -> snapshot.selfDurationMs
+                    ActiveState.SLEEP -> snapshot.sleepDurationMs
+                    ActiveState.IDLE -> 0L
+                }
+                updateNotification(snapshot.activeState, baseDuration + snapshot.activelyTickingMs)
+            }
+        }
     }
 
     private fun updateNotification(state: ActiveState, elapsedMs: Long) {
-        val timeString = com.example.timetracker.util.TimeFormatter.formatHMS(elapsedMs)
-        val stateName = when(state) {
+        val timeString = TimeFormatter.formatHMS(elapsedMs)
+        val stateName = when (state) {
             ActiveState.IDLE -> "Idle"
             ActiveState.WORK -> "Work"
             ActiveState.SELF -> "Self"

@@ -1,30 +1,48 @@
 package com.example.timetracker.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
-import android.content.Intent
-import android.net.Uri
 import com.example.timetracker.data.ActiveState
+import com.example.timetracker.data.TrackerSnapshot
+import com.example.timetracker.util.TimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    uiState: TrackerUiState,
-    onNavigateToHistory: () -> Unit,
+    uiState: TrackerSnapshot,
     onStateChange: (ActiveState) -> Unit,
     onResetCurrent: () -> Unit,
     onForceSave: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Time Tracker") })
+            TopAppBar(
+                title = { Text("Time Tracker") },
+                actions = {
+                    IconButton(onClick = {
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://github.com/khoryz666/TimeTracker/releases/latest")
+                        )
+                        context.startActivity(intent)
+                    }) {
+                        Icon(Icons.Filled.Info, contentDescription = "Check for updates")
+                    }
+                }
+            )
         }
     ) { paddingValues ->
         Column(
@@ -35,8 +53,7 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            
-            // The Three Main Timer Buttons
+            // The Three Main Timer Buttons - the primary, most frequent actions
             TimerButton(
                 title = "Work",
                 state = ActiveState.WORK,
@@ -66,44 +83,29 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Action Buttons
+            // Secondary, less-frequent actions - outlined so they don't compete with the
+            // primary timer buttons above or the stop action below.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Button(onClick = onResetCurrent) {
+                OutlinedButton(onClick = onResetCurrent) {
                     Text("Reset Current")
                 }
-                Button(onClick = onForceSave) {
+                OutlinedButton(onClick = onForceSave) {
                     Text("Save Progress")
                 }
             }
 
             Button(
-                onClick = { onStateChange(ActiveState.IDLE) }, 
+                onClick = { onStateChange(ActiveState.IDLE) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer, 
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.onErrorContainer
                 )
             ) {
                 Text("Stop All Timers")
-            }
-
-            val context = LocalContext.current
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(onClick = onNavigateToHistory, modifier = Modifier.weight(1f)) {
-                    Text("View History")
-                }
-                Button(onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/khoryz666/TimeTracker/releases/latest"))
-                    context.startActivity(intent)
-                }, modifier = Modifier.weight(1f)) {
-                    Text("Check for Updates")
-                }
             }
         }
     }
@@ -120,8 +122,8 @@ fun TimerButton(
 ) {
     val isActive = state == currentState
     val totalMs = baseDurationMs + if (isActive) activeTickingMs else 0L
-    
-    val timeString = com.example.timetracker.util.TimeFormatter.formatHMS(totalMs)
+
+    val timeString = TimeFormatter.formatHMS(totalMs)
 
     Button(
         onClick = onClick,

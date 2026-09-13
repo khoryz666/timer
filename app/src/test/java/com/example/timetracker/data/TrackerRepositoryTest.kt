@@ -4,6 +4,8 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -54,7 +56,7 @@ class TrackerRepositoryTest {
         repository.switchState(ActiveState.SELF)
 
         val record = dao.getRecordByDate(todayDateString())
-        assertEquals(ActiveState.SELF, repository.activeStateFlow.first())
+        assertEquals(ActiveState.SELF, prefs.activeStateFlow.first())
         assertTrue("expected work duration to be saved, got $record", (record?.workDurationMs ?: 0L) >= 5_000L)
     }
 
@@ -104,7 +106,41 @@ class TrackerRepositoryTest {
 
         val record = dao.getRecordByDate(todayDateString())
         assertTrue((record?.workDurationMs ?: 0L) >= 3_000L)
-        assertEquals(ActiveState.WORK, repository.activeStateFlow.first())
-        assertTrue(repository.startTimeFlow.first() > start)
+        assertEquals(ActiveState.WORK, prefs.activeStateFlow.first())
+        assertTrue(prefs.startTimeFlow.first() > start)
+    }
+
+    @Test
+    fun `snapshotFlow reflects idle state with zero ticking`() = runTest {
+        val snapshot = repository.snapshotFlow().first()
+
+        assertEquals(ActiveState.IDLE, snapshot.activeState)
+        assertEquals(0L, snapshot.activelyTickingMs)
+    }
+
+    @Test
+    fun `snapshotFlow ticks while a category is active`() = runTest {
+        prefs.setActiveState(ActiveState.WORK, System.currentTimeMillis() - 500L)
+
+        val snapshots = repository.snapshotFlow(tickIntervalMs = 10L).take(2).toList()
+
+        assertEquals(2, snapshots.size)
+        snapshots.forEach {
+            assertEquals(ActiveState.WORK, it.activeState)
+            assertTrue(it.activelyTickingMs >= 500L)
+        }
+    }
+
+    @Test
+    fun `snapshotFlow separates stored base duration from the actively ticking category`() = runTest {
+        val dateStr = todayDateString()
+        dao.insertOrUpdate(TimeRecord(date = dateStr, workDurationMs = 60_000L, selfDurationMs = 30_000L))
+        prefs.setActiveState(ActiveState.WORK, System.currentTimeMillis() - 1_000L)
+
+        val snapshot = repository.snapshotFlow().first()
+
+        assertEquals(60_000L, snapshot.workDurationMs)
+        assertEquals(30_000L, snapshot.selfDurationMs)
+        assertTrue(snapshot.activelyTickingMs >= 1_000L)
     }
 }
