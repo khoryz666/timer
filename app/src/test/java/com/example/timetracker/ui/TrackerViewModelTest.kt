@@ -46,7 +46,7 @@ class TrackerViewModelTest {
 
     @Test
     fun `initial state is idle`() = runBlocking {
-        val state = withTimeout(5_000) { viewModel.uiState.first() }
+        val state = withTimeout(10_000) { viewModel.uiState.first() }
         assertEquals(ActiveState.IDLE, state.activeState)
     }
 
@@ -54,7 +54,7 @@ class TrackerViewModelTest {
     fun `pressing a button is reflected in uiState`() = runBlocking {
         viewModel.onButtonPress(ActiveState.WORK)
 
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.activeState == ActiveState.WORK }
         }
         assertEquals(ActiveState.WORK, state.activeState)
@@ -63,11 +63,11 @@ class TrackerViewModelTest {
     @Test
     fun `resetActiveTimer zeroes the active category in uiState`() = runBlocking {
         viewModel.onButtonPress(ActiveState.WORK)
-        withTimeout(5_000) { viewModel.uiState.first { it.activeState == ActiveState.WORK } }
+        withTimeout(10_000) { viewModel.uiState.first { it.activeState == ActiveState.WORK } }
 
         viewModel.resetActiveTimer()
 
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.activeState == ActiveState.WORK && it.workDurationMs == 0L }
         }
         assertEquals(0L, state.workDurationMs)

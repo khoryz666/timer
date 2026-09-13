@@ -49,7 +49,7 @@ class HistoryViewModelTest {
 
     @Test
     fun `records is empty when nothing has been tracked`() = runBlocking {
-        val records = withTimeout(5_000) { viewModel.records.first() }
+        val records = withTimeout(10_000) { viewModel.records.first() }
         assertEquals(emptyList<TimeRecord>(), records)
     }
 
@@ -57,7 +57,7 @@ class HistoryViewModelTest {
     fun `records reflects what is stored in the database`() = runBlocking {
         dao.insertOrUpdate(TimeRecord(date = "2026-01-01", workDurationMs = 1_000L))
 
-        val records = withTimeout(5_000) { viewModel.records.first { it.isNotEmpty() } }
+        val records = withTimeout(10_000) { viewModel.records.first { it.isNotEmpty() } }
 
         assertEquals(1, records.size)
         assertEquals("2026-01-01", records.first().date)

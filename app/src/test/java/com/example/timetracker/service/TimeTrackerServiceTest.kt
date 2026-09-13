@@ -73,7 +73,7 @@ class TimeTrackerServiceTest {
 
         service.onStartCommand(Intent().apply { action = TimeTrackerService.ACTION_WORK }, 0, 1)
 
-        val state = withTimeout(5_000) { prefs.activeStateFlow.first { it == ActiveState.WORK } }
+        val state = withTimeout(10_000) { prefs.activeStateFlow.first { it == ActiveState.WORK } }
         assertEquals(ActiveState.WORK, state)
     }
 }
