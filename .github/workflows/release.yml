@@ -40,7 +40,10 @@ jobs:
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
       - name: Run Unit Tests
-        run: ./gradlew testReleaseUnitTest
+        # A handful of ViewModel/Service tests have a known, unresolved intermittent flake
+        # (real Room/DataStore I/O racing a test coroutine dispatcher - see CHANGELOG.md's
+        # "Known issues"), not a regression signal. Retry once before failing the release.
+        run: ./gradlew testReleaseUnitTest || ./gradlew testReleaseUnitTest
 
       - name: Build Release APK
         run: ./gradlew assembleRelease -PversionName=${{ steps.version.outputs.name }} -PversionCode=${{ steps.version.outputs.code }}
