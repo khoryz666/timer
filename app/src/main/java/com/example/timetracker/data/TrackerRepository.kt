@@ -1,6 +1,7 @@
 package com.example.timetracker.data
 
 import android.content.Context
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -41,6 +42,7 @@ class TrackerRepository(
      * [tickIntervalMs] while a category is active so the ticking total stays live; holds
      * steady (no ticking) while idle.
      */
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun snapshotFlow(tickIntervalMs: Long = 1_000L): Flow<TrackerSnapshot> =
         combine(prefs.activeStateFlow, prefs.startTimeFlow, dao.getAllRecordsDescending()) { state, startTime, records ->
             val record = records.find { it.date == currentDateString() }
@@ -50,7 +52,9 @@ class TrackerRepository(
                 emit(record.toSnapshot(state, activelyTickingMs = 0L))
             } else {
                 while (true) {
-                    emit(record.toSnapshot(state, activelyTickingMs = System.currentTimeMillis() - startTime))
+                    // coerceAtLeast guards against a backward clock change making this negative.
+                    val tickingMs = (System.currentTimeMillis() - startTime).coerceAtLeast(0L)
+                    emit(record.toSnapshot(state, activelyTickingMs = tickingMs))
                     delay(tickIntervalMs)
                 }
             }
