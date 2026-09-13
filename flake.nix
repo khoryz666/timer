@@ -1,5 +1,5 @@
 {
-  description = "TimeTracker Android dev environment";
+  description = "Timer Android dev environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

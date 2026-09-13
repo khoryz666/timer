@@ -45,11 +45,14 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease -PversionName=${{ steps.version.outputs.name }} -PversionCode=${{ steps.version.outputs.code }}
 
+      - name: Rename APK for release
+        run: mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/Timer.apk
+
       - name: Publish Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: app/build/outputs/apk/release/app-release.apk
+          files: app/build/outputs/apk/release/Timer.apk
           name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false

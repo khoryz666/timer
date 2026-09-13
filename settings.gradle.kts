@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "TimeTracker"
+rootProject.name = "Timer"
 include(":app")

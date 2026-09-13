@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.timetracker"
+    namespace = "com.example.timer"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.timetracker"
+        applicationId = "com.example.timer"
         minSdk = 24
         targetSdk = 35
         // Overridden by CI from the pushed git tag (-PversionName=X.Y.Z -PversionCode=N);

@@ -1,4 +1,4 @@
-# Time Tracker
+# Timer
 
 A minimal Android app for tracking daily time across three categories: **Work**, **Self**, and **Sleep**.
 
@@ -49,13 +49,13 @@ The debug build is unsigned (well, debug-signed) and unminified — it's for loc
 
 Both run automatically on every push/PR via `.github/workflows/ci.yml`, alongside `assembleDebug`/`assembleRelease` as a build sanity check.
 
-A handful of tests (`TrackerViewModelTest`, `HistoryViewModelTest`, `TimeTrackerServiceTest`) occasionally fail with a `TimeoutCancellationException` — a known, unresolved flake in the test setup (real Room/DataStore I/O racing a test coroutine dispatcher), not a product bug. Re-running the failed test passes. See `CHANGELOG.md`'s "Known issues".
+A handful of tests (`TrackerViewModelTest`, `HistoryViewModelTest`, `TimerServiceTest`) occasionally fail with a `TimeoutCancellationException` — a known, unresolved flake in the test setup (real Room/DataStore I/O racing a test coroutine dispatcher), not a product bug. Re-running the failed test passes. See `CHANGELOG.md`'s "Known issues".
 
 ## Debug
 
 ```sh
 ./gradlew installDebug
-adb logcat | grep -i timetracker   # tag-free app logs; filter further as needed
+adb logcat --pid="$(adb shell pidof -s com.example.timer)"   # tag-free app logs; filter further as needed
 ```
 
 Android Studio works too: open the project, select a device/emulator, and use its normal Run/Debug/Logcat tooling against the `app` module's debug build type.
@@ -75,12 +75,12 @@ git push origin vX.Y.Z
 Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which:
 1. Runs `./gradlew testReleaseUnitTest`
 2. Builds `./gradlew assembleRelease -PversionName=X.Y.Z -PversionCode=N` (minified with R8, signed with the committed release keystore — an official release build, not a debug build)
-3. Publishes `app-release.apk` to a new [GitHub Release](https://github.com/khoryz666/timer/releases) named after the tag, with auto-generated release notes
+3. Publishes `Timer.apk` to a new [GitHub Release](https://github.com/khoryz666/timer/releases) named after the tag, with auto-generated release notes
 
 `versionCode` is derived from the tag as `major*1_000_000 + minor*1_000 + patch`, so tags must be plain `vMAJOR.MINOR.PATCH` (e.g. `v1.2.3`).
 
 ## Install
 
-1. Grab the latest `TimeTracker.apk` from [Releases](https://github.com/khoryz666/timer/releases).
+1. Grab the latest `Timer.apk` from [Releases](https://github.com/khoryz666/timer/releases).
 2. Install it (allow "unknown apps" if prompted).
 3. Later updates install over the old app without losing your history.

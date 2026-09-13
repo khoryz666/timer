@@ -10,7 +10,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - CI runs lint, unit tests, and a build check on every push/PR, not just on tagged releases.
 - Bottom navigation between Timer and History, backed by a `TrackerRepository.snapshotFlow()` that both the dashboard and the notification now read from instead of separately re-deriving the same state.
 - The foreground notification resumes on its own after the app process is killed and restarted, and after a device reboot if a category was left running.
-- Unit test coverage for `TimeTrackerService`, `TrackerViewModel`, `HistoryViewModel`, and Compose smoke tests for the Dashboard/History screens.
+- Unit test coverage for `TimerService`, `TrackerViewModel`, `HistoryViewModel`, and Compose smoke tests for the Dashboard/History screens.
 
 ### Changed
 - Releases now ship a minified, R8-optimized release build (~1.6MB vs ~10.8MB debug) instead of an unminified debug build.
@@ -21,7 +21,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The displayed/notified elapsed time could go negative if the device's clock was set backward while a category was running.
 
 ### Known issues
-- `TrackerViewModelTest`, `HistoryViewModelTest`, and `TimeTrackerServiceTest` have a real but unresolved intermittent flake (`TimeoutCancellationException` waiting on a `Flow` that mixes `UnconfinedTestDispatcher` with real Room/DataStore I/O). Re-running the failed test passes; root cause is narrowed down but not fixed - see the "test: give Robolectric flow-wait timeouts more headroom" commit for what's been tried.
+- `TrackerViewModelTest`, `HistoryViewModelTest`, and `TimerServiceTest` have a real but unresolved intermittent flake (`TimeoutCancellationException` waiting on a `Flow` that mixes `UnconfinedTestDispatcher` with real Room/DataStore I/O). Re-running the failed test passes; root cause is narrowed down but not fixed - see the "test: give Robolectric flow-wait timeouts more headroom" commit for what's been tried.
 
 ## [1.0.0] - 2026-09-12
 
