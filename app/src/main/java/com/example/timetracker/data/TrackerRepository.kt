@@ -18,7 +18,16 @@ data class TrackerSnapshot(
     val selfDurationMs: Long = 0L,
     val sleepDurationMs: Long = 0L,
     val activelyTickingMs: Long = 0L
-)
+) {
+    /** Total elapsed time for whichever category is currently active, ticking included. */
+    val totalActiveMs: Long
+        get() = when (activeState) {
+            ActiveState.WORK -> workDurationMs
+            ActiveState.SELF -> selfDurationMs
+            ActiveState.SLEEP -> sleepDurationMs
+            ActiveState.IDLE -> 0L
+        } + activelyTickingMs
+}
 
 /**
  * Single source of truth for reading/switching the active timer state.
@@ -91,13 +100,7 @@ class TrackerRepository(
 
         val dateStr = currentDateString()
         val record = dao.getRecordByDate(dateStr) ?: TimeRecord(date = dateStr)
-        val updatedRecord = when (currentState) {
-            ActiveState.WORK -> record.copy(workDurationMs = 0L)
-            ActiveState.SELF -> record.copy(selfDurationMs = 0L)
-            ActiveState.SLEEP -> record.copy(sleepDurationMs = 0L)
-            else -> record
-        }
-        dao.insertOrUpdate(updatedRecord)
+        dao.insertOrUpdate(record.withZeroed(currentState))
     }
 
     private suspend fun saveElapsedTimeToDb(state: ActiveState, startTime: Long, endTime: Long) {
@@ -108,13 +111,7 @@ class TrackerRepository(
         val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(endTime))
         val currentRecord = dao.getRecordByDate(dateStr) ?: TimeRecord(date = dateStr)
 
-        val updatedRecord = when (state) {
-            ActiveState.WORK -> currentRecord.copy(workDurationMs = currentRecord.workDurationMs + elapsed)
-            ActiveState.SELF -> currentRecord.copy(selfDurationMs = currentRecord.selfDurationMs + elapsed)
-            ActiveState.SLEEP -> currentRecord.copy(sleepDurationMs = currentRecord.sleepDurationMs + elapsed)
-            else -> currentRecord
-        }
-        dao.insertOrUpdate(updatedRecord)
+        dao.insertOrUpdate(currentRecord.plusDuration(state, elapsed))
     }
 
     private fun TimeRecord?.toSnapshot(state: ActiveState, activelyTickingMs: Long) = TrackerSnapshot(

@@ -88,13 +88,7 @@ class TimeTrackerService : Service() {
 
         serviceScope.launch {
             repository.snapshotFlow().collect { snapshot ->
-                val baseDuration = when (snapshot.activeState) {
-                    ActiveState.WORK -> snapshot.workDurationMs
-                    ActiveState.SELF -> snapshot.selfDurationMs
-                    ActiveState.SLEEP -> snapshot.sleepDurationMs
-                    ActiveState.IDLE -> 0L
-                }
-                updateNotification(snapshot.activeState, baseDuration + snapshot.activelyTickingMs)
+                updateNotification(snapshot.activeState, snapshot.totalActiveMs)
             }
         }
     }
