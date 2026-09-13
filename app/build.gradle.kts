@@ -72,6 +72,17 @@ android {
     }
 }
 
+tasks.withType<Test>().configureEach {
+    // Default console output only prints one line per failure (exception type + location);
+    // show the full cause chain and stack trace so CI failures are diagnosable from the
+    // workflow log alone, without needing the HTML/XML report artifacts.
+    testLogging {
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showCauses = true
+        showStackTraces = true
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
