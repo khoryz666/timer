@@ -10,6 +10,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.example.timetracker.MainActivity
 import com.example.timetracker.data.ActiveState
 import com.example.timetracker.data.TrackerRepository
@@ -38,6 +39,16 @@ class TimeTrackerService : Service() {
 
         /** Test seam: overridden in tests to hand the service an in-memory repository. */
         internal var repositoryFactory: (Context) -> TrackerRepository = { TrackerRepository(it) }
+
+        fun start(context: Context) {
+            val intent = Intent(context, TimeTrackerService::class.java).apply { action = ACTION_START }
+            ContextCompat.startForegroundService(context, intent)
+        }
+
+        fun stop(context: Context) {
+            val intent = Intent(context, TimeTrackerService::class.java).apply { action = ACTION_STOP_SERVICE }
+            context.startService(intent)
+        }
     }
 
     override fun onCreate() {
@@ -48,7 +59,9 @@ class TimeTrackerService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START -> {
+            // A null action means the system restarted us after the process died (START_STICKY
+            // redelivery) - resume the same way a fresh ACTION_START would.
+            ACTION_START, null -> {
                 startForegroundService()
             }
             ACTION_STOP_SERVICE -> {

@@ -2,7 +2,6 @@ package com.example.timetracker
 
 import android.Manifest
 import android.app.Application
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -89,18 +88,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun manageForegroundService(start: Boolean) {
-        val intent = Intent(this, TimeTrackerService::class.java)
-        if (start) {
-            intent.action = TimeTrackerService.ACTION_START
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
-        } else {
-            intent.action = TimeTrackerService.ACTION_STOP_SERVICE
-            startService(intent) // Send stop signal
-        }
+        if (start) TimeTrackerService.start(this) else TimeTrackerService.stop(this)
     }
 }
 
