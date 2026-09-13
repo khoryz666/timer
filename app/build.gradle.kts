@@ -13,8 +13,10 @@ android {
         applicationId = "com.example.timetracker"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // Overridden by CI from the pushed git tag (-PversionName=X.Y.Z -PversionCode=N);
+        // these are just the local-build fallback.
+        versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
+        versionName = (project.findProperty("versionName") as String?) ?: "1.0.0-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
