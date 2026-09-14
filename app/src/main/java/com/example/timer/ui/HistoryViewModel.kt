@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 
-class HistoryViewModel(
+class HistoryViewModel @JvmOverloads constructor(
     application: Application,
     private val repository: TrackerRepository = TrackerRepository(application)
 ) : AndroidViewModel(application) {

@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class TrackerViewModel(
+class TrackerViewModel @JvmOverloads constructor(
     application: Application,
     private val repository: TrackerRepository = TrackerRepository(application)
 ) : AndroidViewModel(application) {
