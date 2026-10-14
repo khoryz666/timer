@@ -16,15 +16,21 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.khoryz666.timer.core.ui.appViewModel
 import io.github.khoryz666.timer.settings.SettingsRoute
-import io.github.khoryz666.timer.settings.VersionInfo
 import io.github.khoryz666.timer.today.TodayRoute
+import io.github.khoryz666.timer.update.UpdateDialog
+import io.github.khoryz666.timer.update.UpdateViewModel
+import io.github.khoryz666.timer.update.UpdatesSection
 import io.github.khoryz666.timer.week.WeekRoute
 
 private enum class Tab(val label: String, val icon: ImageVector) {
@@ -36,6 +42,24 @@ private enum class Tab(val label: String, val icon: ImageVector) {
 @Composable
 fun TimerNavigation() {
     var tab by rememberSaveable { mutableStateOf(Tab.Today) }
+    val updates = appViewModel {
+        UpdateViewModel(
+            it.releases,
+            it.installer,
+            it.updateChecks,
+            it.clock,
+            installedVersion = BuildConfig.VERSION_NAME,
+            enabled = !BuildConfig.DEBUG,
+        )
+    }
+    val updateState by updates.state.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { updates.autoCheck() }
+    LifecycleResumeEffect(Unit) {
+        updates.onResume()
+        onPauseOrDispose {}
+    }
+    UpdateDialog(updates, updateState)
+
     BackHandler(enabled = tab != Tab.Today) { tab = Tab.Today }
 
     Scaffold(
@@ -58,7 +82,9 @@ fun TimerNavigation() {
             when (tab) {
                 Tab.Today -> TodayRoute()
                 Tab.Week -> WeekRoute()
-                Tab.Settings -> SettingsRoute(updates = { VersionInfo() })
+                Tab.Settings -> SettingsRoute(
+                    updates = { UpdatesSection(updateState, onCheck = updates::checkNow, onOpenUpdate = updates::openDialog) },
+                )
             }
         }
     }
