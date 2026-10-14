@@ -1,6 +1,5 @@
 package io.github.khoryz666.timer.today
 
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -36,7 +35,7 @@ class TodayScreenTest {
         val status = TodayStatus.of(LocalDate.of(2026, 10, 14), 200 * minute, running, projects, totals, QuotaSettings())
         compose.setContent {
             TimerTheme {
-                TodayScreen(status, PaddingValues(), onSwitch = { switched += it }, onStop = { stopped = true })
+                TodayScreen(status, onSwitch = { switched += it }, onStop = { stopped = true })
             }
         }
     }

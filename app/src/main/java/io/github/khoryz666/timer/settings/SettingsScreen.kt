@@ -4,13 +4,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +21,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -46,17 +47,16 @@ import io.github.khoryz666.timer.projects.Project
 import io.github.khoryz666.timer.quota.QuotaSettings
 
 @Composable
-fun SettingsRoute(contentPadding: PaddingValues, updates: @Composable ColumnScope.() -> Unit) {
+fun SettingsRoute(updates: @Composable ColumnScope.() -> Unit) {
     val viewModel = appViewModel { SettingsViewModel(it.settings, it.database.projects()) }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    state?.let { SettingsScreen(it, viewModel, contentPadding, updates) }
+    state?.let { SettingsScreen(it, viewModel, updates) }
 }
 
 @Composable
 private fun SettingsScreen(
     state: SettingsState,
     viewModel: SettingsViewModel,
-    contentPadding: PaddingValues,
     updates: @Composable ColumnScope.() -> Unit,
 ) {
     val quota = state.quota
@@ -66,7 +66,6 @@ private fun SettingsScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(contentPadding)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -178,15 +177,30 @@ private fun Stepper(label: String, value: String, onMinus: (() -> Unit)?, onPlus
                 Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        FilledTonalIconButton(onClick = { onMinus?.invoke() }, enabled = onMinus != null) { Text("−", style = MaterialTheme.typography.titleMedium) }
+        StepButton(onClick = { onMinus?.invoke() }, enabled = onMinus != null) { Text("−", style = MaterialTheme.typography.titleMedium) }
         Text(
             value,
             style = MaterialTheme.typography.bodyLarge.merge(Numeric),
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(min = 84.dp),
         )
-        FilledTonalIconButton(onClick = { onPlus?.invoke() }, enabled = onPlus != null) { Text("+", style = MaterialTheme.typography.titleMedium) }
+        StepButton(onClick = { onPlus?.invoke() }, enabled = onPlus != null) { Text("+", style = MaterialTheme.typography.titleMedium) }
     }
+}
+
+/** A neutral -/+ button, so settings don't borrow a pillar colour. */
+@Composable
+private fun StepButton(onClick: () -> Unit, enabled: Boolean, content: @Composable () -> Unit) {
+    FilledTonalIconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(40.dp),
+        colors = IconButtonDefaults.filledTonalIconButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+        content = content,
+    )
 }
 
 @Composable
@@ -196,7 +210,7 @@ private fun ProjectRow(project: Project, canRemove: Boolean, onRename: () -> Uni
             Text(project.name, style = MaterialTheme.typography.bodyLarge)
             Text("Tap to rename", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        FilledTonalIconButton(onClick = { onShareChange(project.sharePercent - 5) }, enabled = project.sharePercent > 0) {
+        StepButton(onClick = { onShareChange(project.sharePercent - 5) }, enabled = project.sharePercent > 0) {
             Text("−", style = MaterialTheme.typography.titleMedium)
         }
         Text(
@@ -205,7 +219,7 @@ private fun ProjectRow(project: Project, canRemove: Boolean, onRename: () -> Uni
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(min = 52.dp),
         )
-        FilledTonalIconButton(onClick = { onShareChange(project.sharePercent + 5) }, enabled = project.sharePercent < 100) {
+        StepButton(onClick = { onShareChange(project.sharePercent + 5) }, enabled = project.sharePercent < 100) {
             Text("+", style = MaterialTheme.typography.titleMedium)
         }
         IconButton(onClick = onRemove, enabled = canRemove) {

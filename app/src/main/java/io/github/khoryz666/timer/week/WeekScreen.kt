@@ -3,7 +3,6 @@ package io.github.khoryz666.timer.week
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,14 +50,13 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun WeekRoute(contentPadding: PaddingValues) {
+fun WeekRoute() {
     val viewModel = appViewModel { WeekViewModel(it.database.sessions(), it.database.projects(), it.settings, it.clock) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     var openDay by rememberSaveable { mutableStateOf<LocalDate?>(null) }
     val current = state ?: return
     WeekScreen(
         state = current,
-        contentPadding = contentPadding,
         onPrevious = viewModel::previousWeek,
         onNext = viewModel::nextWeek,
         onDayClick = { openDay = it },
@@ -82,7 +80,6 @@ private val DayNumber = DateTimeFormatter.ofPattern("d")
 @Composable
 fun WeekScreen(
     state: WeekState,
-    contentPadding: PaddingValues,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onDayClick: (LocalDate) -> Unit,
@@ -92,7 +89,6 @@ fun WeekScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(contentPadding)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -209,17 +205,23 @@ private fun DayRow(day: DaySummary, isFuture: Boolean, isToday: Boolean, onClick
         BlockDots(day.engineBlocks)
         Spacer(Modifier.weight(1f))
         Column(horizontalAlignment = Alignment.End) {
-            Text(
-                formatDuration(day.totals.engineMs),
-                style = MaterialTheme.typography.bodyMedium.merge(Numeric),
-                color = pillarColor(Pillar.ENGINE),
-            )
-            Text(
-                formatDuration(day.totals.joyMs),
-                style = MaterialTheme.typography.bodyMedium.merge(Numeric),
-                color = pillarColor(Pillar.JOY),
-            )
+            LabelledTime("Engine", day.totals.engineMs, Pillar.ENGINE)
+            LabelledTime("Joy", day.totals.joyMs, Pillar.JOY)
         }
+    }
+}
+
+@Composable
+private fun LabelledTime(label: String, ms: Long, pillar: Pillar) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            formatDuration(ms),
+            style = MaterialTheme.typography.bodyMedium.merge(Numeric),
+            color = pillarColor(pillar),
+            textAlign = TextAlign.End,
+            modifier = Modifier.widthIn(min = 64.dp),
+        )
     }
 }
 

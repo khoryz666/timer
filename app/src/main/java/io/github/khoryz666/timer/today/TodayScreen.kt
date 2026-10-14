@@ -3,7 +3,6 @@ package io.github.khoryz666.timer.today
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -53,19 +52,18 @@ import io.github.khoryz666.timer.tracking.TrackTarget
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun TodayRoute(contentPadding: PaddingValues) {
+fun TodayRoute() {
     val viewModel = appViewModel { TodayViewModel(it.tracker) }
     val status by viewModel.status.collectAsStateWithLifecycle()
-    status?.let { TodayScreen(it, contentPadding, onSwitch = viewModel::switchTo, onStop = viewModel::stop) }
+    status?.let { TodayScreen(it, onSwitch = viewModel::switchTo, onStop = viewModel::stop) }
 }
 
 @Composable
-fun TodayScreen(status: TodayStatus, contentPadding: PaddingValues, onSwitch: (TrackTarget) -> Unit, onStop: () -> Unit) {
+fun TodayScreen(status: TodayStatus, onSwitch: (TrackTarget) -> Unit, onStop: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(contentPadding)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
