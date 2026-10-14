@@ -9,38 +9,18 @@ permissions:
   contents: read
 
 jobs:
-  build-lint-test:
-    name: Build, Lint, and Test
+  check:
+    name: Lint, test and build
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Java 21
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: zulu
           java-version: '21'
-          cache: 'gradle'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+      - uses: gradle/actions/setup-gradle@v4
 
-      - name: Grant Execute Permission for Gradlew
-        run: chmod +x gradlew
-
-      - name: Lint
-        run: ./gradlew lintDebug
-
-      - name: Unit Tests
-        # A handful of ViewModel/Service tests have a known, unresolved intermittent flake
-        # (real Room/DataStore I/O racing a test coroutine dispatcher - see CHANGELOG.md's
-        # "Known issues"), not a regression signal. Retry once before failing the build.
-        run: ./gradlew testDebugUnitTest || ./gradlew testDebugUnitTest
-
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
-
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
+      - name: Lint, unit tests and release build
+        run: ./gradlew lintDebug testDebugUnitTest assembleRelease
