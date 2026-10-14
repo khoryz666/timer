@@ -1,10 +1,8 @@
 # Release keystore
 
-`release.keystore` is committed on purpose. This app isn't distributed through
-the Play Store — it's sideloaded from GitHub Releases — so the only thing this
-key needs to do is stay the same across releases, so a new APK can install as
-an update over an old one instead of failing with a signature mismatch.
+`release.keystore` is committed on purpose. The app is sideloaded from GitHub Releases
+and updates itself from there, so the only job of this key is to stay the same: Android
+installs an update over the existing app only if both are signed with the same key.
 
-There's no secret here worth protecting: alias `timetracker`, store/key
-password `timetracker-release`. If you fork this project, feel free to
-generate your own keystore instead of reusing this one.
+Alias `timetracker`, store and key password `timetracker-release`. Never replace this
+file, or existing installs will refuse the next update.
