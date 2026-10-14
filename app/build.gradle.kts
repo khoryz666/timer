@@ -1,27 +1,29 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.kotlin.android)
 }
 
+val appVersion: String = providers.gradleProperty("timer.version").get()
+
 android {
-    namespace = "com.example.timer"
+    namespace = "io.github.khoryz666.timer"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.timer"
-        minSdk = 24
+        applicationId = "io.github.khoryz666.timer"
+        minSdk = 26
         targetSdk = 35
-        // Overridden by CI from the pushed git tag (-PversionName=X.Y.Z -PversionCode=N);
-        // these are just the local-build fallback.
-        versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
-        versionName = (project.findProperty("versionName") as String?) ?: "1.0.0-dev"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        versionName = appVersion
+        versionCode = appVersion.split('.').map(String::toInt)
+            .let { (major, minor, patch) -> major * 1_000_000 + minor * 1_000 + patch }
     }
 
     signingConfigs {
+        // Committed on purpose so every release is signed identically - see keystore/README.md.
         create("release") {
             storeFile = rootProject.file("keystore/release.keystore")
             storePassword = "timetracker-release"
@@ -31,88 +33,68 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+            resValue("string", "app_name", "Timer Debug")
+        }
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            resValue("string", "app_name", "Timer")
         }
     }
+
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         compose = true
-    }
-    kotlinOptions {
-        jvmTarget = "11"
+        buildConfig = true
     }
     testOptions {
-        unitTests {
-            isIncludeAndroidResources = true
-            isReturnDefaultValues = true
-        }
-    }
-    lint {
-        // The navigation-compose lint-checks jar throws NoClassDefFoundError:
-        // androidx/navigation/lint/UtilKt on this AGP/navigation-compose combination - a bug
-        // in the jar itself, not our code (we use plain String routes, not the type-safe
-        // @Serializable routes several of these checks are designed for). Disabling the whole
-        // detector set rather than chasing each one individually as it surfaces.
-        disable += setOf(
-            "WrongNavigateRouteType",
-            "WrongStartDestinationType",
-            "ComposableDestinationInComposeScope",
-            "ComposableNavGraphInComposeScope",
-            "UnrememberedGetBackStackEntry"
-        )
+        unitTests.isIncludeAndroidResources = true
     }
 }
 
+kotlin {
+    compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 tasks.withType<Test>().configureEach {
-    // Default console output only prints one line per failure (exception type + location);
-    // show the full cause chain and stack trace so CI failures are diagnosable from the
-    // workflow log alone, without needing the HTML/XML report artifacts.
     testLogging {
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-        showCauses = true
-        showStackTraces = true
     }
 }
 
 dependencies {
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons.extended)
-
-    // Room Database
-    implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
-    ksp(libs.room.compiler)
-
-    // DataStore Preferences
-    implementation(libs.datastore.preferences)
-
-    // Compose Navigation & ViewModel
-    implementation(libs.lifecycle.viewmodel.compose)
-    implementation(libs.navigation.compose)
+    implementation(libs.androidx.compose.material.icons.core)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.datastore.preferences)
 
     testImplementation(libs.junit)
-    testImplementation(libs.robolectric)
     testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.androidx.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    // android.jar only has org.json stubs; this is the real implementation for JVM tests.
+    testImplementation(libs.json)
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.androidx.compose.ui.test.junit4)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
