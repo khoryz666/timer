@@ -3,25 +3,51 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [2.0.0] - 2026-10-15
+
+A rewrite around daily quotas. It has a new application id, so it installs as a
+new app: uninstall 1.x yourself. There is no data migration.
 
 ### Added
-- Real unit test coverage (`TimeFormatter`, `TrackerRepository` via Robolectric) replacing the Android Studio boilerplate tests.
-- CI runs lint, unit tests, and a build check on every push/PR, not just on tagged releases.
-- Bottom navigation between Timer and History, backed by a `TrackerRepository.snapshotFlow()` that both the dashboard and the notification now read from instead of separately re-deriving the same state.
-- The foreground notification resumes on its own after the app process is killed and restarted, and after a device reboot if a category was left running.
-- Unit test coverage for `TimerService`, `TrackerViewModel`, `HistoryViewModel`, and Compose smoke tests for the Dashboard/History screens.
+- Engine and Joy pillars replace Work / Self / Sleep. Engine time goes to a
+  project and is counted in blocks (default 90 min, floor 2, target 4 a day,
+  24 a week); Joy has a daily target (default 4h).
+- Today screen: live stopwatch for the running session, Engine blocks with
+  below-floor / floor-met / target-met status, Joy progress, one-tap switching.
+- Week screen (Monday start): Engine blocks vs target, project split vs target
+  share, Joy total, and a daily history where you can delete a mistaken session.
+- Settings: block length, floor, daily and weekly targets, Joy target, and the
+  project list with each project's target share (60/40 by default).
+- Optional nudge, off by default, when Joy starts before the first Engine block.
+- In-app updates: checks GitHub Releases on launch (at most once a day) and from
+  Settings, shows the release notes, and installs through the system installer.
+- New app icon, with a themed-icon layer.
 
 ### Changed
-- Releases now ship a minified, R8-optimized release build (~1.6MB vs ~10.8MB debug) instead of an unminified debug build.
-- `versionCode`/`versionName` are now derived from the pushed git tag instead of being hardcoded to `1`/`"1.0"`.
+- The notification shows the running session's stopwatch and Engine progress
+  (`Engine 2/4 blocks · Joy 1h 10m/4h`), with Stop / Joy / project actions.
+- Sessions are stored with start and end times, so a session that crosses
+  midnight counts toward the day it ends on, and tracking survives the app being
+  killed or the phone rebooting. The notification also returns after an update.
+- Light and dark themes with fixed colours for each pillar.
+- The app version lives in `gradle.properties`; releases fail if the tag doesn't
+  match, and use the CHANGELOG section as their notes.
+- The default Nix shell only has what the build needs (453 MB of SDK instead of
+  5.1 GB); the emulator moved to `nix develop .#emulator`.
+- Minimum Android version is now 8.0 (API 26).
+
+### Removed
+- The Work / Self / Sleep categories, Reset and Save buttons, and the old history screen.
+- navigation-compose, material-icons-extended and other unused dependencies;
+  committed `.idea/` files and template boilerplate.
 
 ### Fixed
-- Release APKs are now signed with a stable, committed keystore instead of a debug keystore that GitHub Actions regenerated randomly on every run — past releases could fail to install as updates over each other because of this.
-- The displayed/notified elapsed time could go negative if the device's clock was set backward while a category was running.
-
-### Known issues
-- `TrackerViewModelTest`, `HistoryViewModelTest`, and `TimerServiceTest` have a real but unresolved intermittent flake (`TimeoutCancellationException` waiting on a `Flow` that mixes `UnconfinedTestDispatcher` with real Room/DataStore I/O). Re-running the failed test passes; root cause is narrowed down but not fixed - see the "test: give Robolectric flow-wait timeouts more headroom" commit for what's been tried.
+- The intermittently failing ViewModel and service tests. They waited with
+  timeouts on flows fed by real Room and DataStore I/O on background threads,
+  racing the test dispatcher and wall-clock time. The quota logic is now pure
+  and tested with a fixed clock, and the tracker test only awaits suspend calls
+  against an in-memory database, so nothing depends on timing. The CI
+  retry-once workaround is gone.
 
 ## [1.0.0] - 2026-09-12
 
