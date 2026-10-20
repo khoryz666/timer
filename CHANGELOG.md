@@ -3,6 +3,30 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.0] - 2026-10-21
+
+Day types and three focus tracks. Updating from 2.0 keeps all data: Engine time
+becomes Project time, and 2.0's projects and shares become the starting weekly plan.
+
+### Added
+- Day types: Light, Class and Deep, picked on Today with a three-stop slider. Each sets
+  the day's targets; a day without one keeps the latest earlier choice.
+- A once-a-day notification (from 07:00 by default) that asks for the day type, with
+  Light / Class / Deep buttons.
+- NeetCode and Reading tracks next to Project, each with a target per day type.
+- Per-week project lists, edited on the Week screen: changes apply from the current
+  week on, and earlier weeks keep their own list and shares.
+
+### Changed
+- Engine is now the Project track; its floor and target are set per day type.
+- Blocks are 60 minutes by default (they were 90). Each track counts its own blocks.
+- Weekly targets are the sum of each day's targets instead of a separate setting.
+- The notification puts the day type in its header, shows `Project 2/5 · Neet 1/1 ·
+  Read 0/2` collapsed and one line per track expanded. Its buttons are Stop, the track
+  furthest from its target, and Joy.
+- The project list and shares moved from Settings to the Week screen. A fresh install
+  starts with QorFinder 80% / KEFOS 20%.
+
 ## [2.0.0] - 2026-10-15
 
 A rewrite around daily quotas. It has a new application id, so it installs as a
