@@ -1,5 +1,7 @@
 package io.github.khoryz666.timer.quota
 
+import io.github.khoryz666.timer.tracking.Pillar
+
 enum class QuotaStatus { BELOW_FLOOR, FLOOR_MET, TARGET_MET }
 
 fun quotaStatus(value: Long, floor: Long, target: Long): QuotaStatus = when {
@@ -8,8 +10,9 @@ fun quotaStatus(value: Long, floor: Long, target: Long): QuotaStatus = when {
     else -> QuotaStatus.BELOW_FLOOR
 }
 
-/** Engine time is counted in whole blocks: the sum of the day's Engine time divided by the block length. */
-data class EngineProgress(
+/** A focus track's day, counted in whole blocks: the sum of its time divided by the block length. */
+data class TrackProgress(
+    val pillar: Pillar,
     val trackedMs: Long,
     val blocks: Int,
     /** How far into the next, not-yet-complete block, 0 until 1. */
@@ -21,18 +24,21 @@ data class EngineProgress(
     val status: QuotaStatus
         get() = quotaStatus(blocks.toLong(), floorBlocks.toLong(), targetBlocks.toLong())
 
+    val hasTarget: Boolean get() = targetBlocks > 0
+
+    /** Tracked time still needed to reach the target. */
+    val remainingMs: Long get() = (targetMs - trackedMs).coerceAtLeast(0)
+
     companion object {
-        fun of(trackedMs: Long, settings: QuotaSettings): EngineProgress {
-            val blockMs = settings.blockMs
-            return EngineProgress(
-                trackedMs = trackedMs,
-                blocks = completedBlocks(trackedMs, blockMs),
-                nextBlockFraction = (trackedMs % blockMs).toFloat() / blockMs,
-                floorBlocks = settings.floorBlocks,
-                targetBlocks = settings.targetBlocks,
-                targetMs = settings.engineTargetMs,
-            )
-        }
+        fun of(pillar: Pillar, trackedMs: Long, targets: DayTargets, blockMs: Long) = TrackProgress(
+            pillar = pillar,
+            trackedMs = trackedMs,
+            blocks = completedBlocks(trackedMs, blockMs),
+            nextBlockFraction = (trackedMs % blockMs).toFloat() / blockMs,
+            floorBlocks = targets.floor(pillar),
+            targetBlocks = targets.target(pillar),
+            targetMs = targets.target(pillar) * blockMs,
+        )
     }
 }
 

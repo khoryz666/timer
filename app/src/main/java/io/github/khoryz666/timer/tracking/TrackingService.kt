@@ -11,6 +11,7 @@ import android.os.Build
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import io.github.khoryz666.timer.appGraph
+import io.github.khoryz666.timer.day.DayType
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -40,13 +41,17 @@ class TrackingService : Service() {
                     graph.notifications.postTracking(it)
                 }
         }
+        scope.launch {
+            graph.clock.ticks(DAY_PROMPT_CHECK_MS).collect { graph.dayPrompter.postIfDue() }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!enterForeground()) return START_NOT_STICKY
         when (intent?.action) {
-            ACTION_SWITCH -> scope.launch { graph.tracker.switchTo(intent.target()) }
+            ACTION_SWITCH -> intent.target()?.let { scope.launch { graph.tracker.switchTo(it) } }
             ACTION_STOP -> scope.launch { graph.tracker.stop() }
+            ACTION_SET_DAY_TYPE -> intent.dayType()?.let { scope.launch { graph.tracker.setDayType(it) } }
         }
         return START_STICKY
     }
@@ -79,10 +84,14 @@ class TrackingService : Service() {
 
     companion object {
         private const val TICK_MS = 30_000L
+        private const val DAY_PROMPT_CHECK_MS = 60_000L
         private const val ACTION_SHOW = "show"
         private const val ACTION_SWITCH = "switch"
         private const val ACTION_STOP = "stop"
+        private const val ACTION_SET_DAY_TYPE = "setDayType"
+        private const val EXTRA_PILLAR = "pillar"
         private const val EXTRA_PROJECT_ID = "projectId"
+        private const val EXTRA_DAY_TYPE = "dayType"
 
         fun start(context: Context) {
             ContextCompat.startForegroundService(context, Intent(context, TrackingService::class.java))
@@ -90,18 +99,22 @@ class TrackingService : Service() {
 
         internal fun showIntent(context: Context): PendingIntent = servicePendingIntent(context, 0, Intent(ACTION_SHOW))
 
+        // Distinct request codes, so each intent keeps its own extras.
         internal fun actionIntent(context: Context, action: QuickAction): PendingIntent = when (action) {
             QuickAction.Stop -> servicePendingIntent(context, 1, Intent(ACTION_STOP))
-            is QuickAction.Switch -> when (val target = action.target) {
-                TrackTarget.Joy -> servicePendingIntent(context, 2, Intent(ACTION_SWITCH))
-                is TrackTarget.Engine -> servicePendingIntent(
-                    context,
-                    // Distinct request codes so each project's intent keeps its own extras.
-                    1000 + target.projectId.toInt(),
-                    Intent(ACTION_SWITCH).putExtra(EXTRA_PROJECT_ID, target.projectId),
-                )
+            is QuickAction.Switch -> {
+                val target = action.target
+                val intent = Intent(ACTION_SWITCH).putExtra(EXTRA_PILLAR, target.pillar.name)
+                if (target is TrackTarget.Project) {
+                    servicePendingIntent(context, 1000 + target.projectId.toInt(), intent.putExtra(EXTRA_PROJECT_ID, target.projectId))
+                } else {
+                    servicePendingIntent(context, 2 + target.pillar.ordinal, intent)
+                }
             }
         }
+
+        internal fun dayTypeIntent(context: Context, type: DayType): PendingIntent =
+            servicePendingIntent(context, 10 + type.ordinal, Intent(ACTION_SET_DAY_TYPE).putExtra(EXTRA_DAY_TYPE, type.name))
 
         private fun servicePendingIntent(context: Context, requestCode: Int, intent: Intent): PendingIntent =
             PendingIntent.getService(
@@ -111,7 +124,12 @@ class TrackingService : Service() {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
 
-        private fun Intent.target(): TrackTarget =
-            if (hasExtra(EXTRA_PROJECT_ID)) TrackTarget.Engine(getLongExtra(EXTRA_PROJECT_ID, 0)) else TrackTarget.Joy
+        private fun Intent.target(): TrackTarget? {
+            val pillar = getStringExtra(EXTRA_PILLAR)?.let { name -> Pillar.entries.find { it.name == name } } ?: return null
+            if (pillar == Pillar.PROJECT && !hasExtra(EXTRA_PROJECT_ID)) return null
+            return TrackTarget.of(pillar, getLongExtra(EXTRA_PROJECT_ID, 0))
+        }
+
+        private fun Intent.dayType(): DayType? = getStringExtra(EXTRA_DAY_TYPE)?.let { name -> DayType.entries.find { it.name == name } }
     }
 }

@@ -75,7 +75,7 @@ fun DaySheet(
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            if (session.pillar == Pillar.JOY) "Joy" else projectNames[session.projectId] ?: "Engine",
+                            if (session.pillar == Pillar.PROJECT) projectNames[session.projectId] ?: "Project" else session.pillar.label,
                             style = MaterialTheme.typography.bodyLarge,
                         )
                         Text(

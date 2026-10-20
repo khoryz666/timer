@@ -7,20 +7,23 @@ import java.time.LocalDate
 
 /** Tracked time for one local day. */
 data class DayTotals(
-    val engineMs: Long = 0,
-    val joyMs: Long = 0,
-    val engineByProject: Map<Long, Long> = emptyMap(),
+    val byPillar: Map<Pillar, Long> = emptyMap(),
+    val byProject: Map<Long, Long> = emptyMap(),
 ) {
-    fun with(session: Session, ms: Long): DayTotals = when (session.pillar) {
-        Pillar.JOY -> copy(joyMs = joyMs + ms)
-        Pillar.ENGINE -> {
-            val projectId = requireNotNull(session.projectId)
-            copy(
-                engineMs = engineMs + ms,
-                engineByProject = engineByProject + (projectId to (engineByProject[projectId] ?: 0) + ms),
-            )
-        }
+    fun ms(pillar: Pillar): Long = byPillar[pillar] ?: 0
+
+    val joyMs: Long get() = ms(Pillar.JOY)
+    val focusMs: Long get() = Pillar.FOCUS.sumOf(::ms)
+
+    fun with(session: Session, ms: Long): DayTotals {
+        val pillars = byPillar + (session.pillar to ms(session.pillar) + ms)
+        if (session.pillar != Pillar.PROJECT) return copy(byPillar = pillars)
+        val projectId = requireNotNull(session.projectId)
+        return DayTotals(pillars, byProject + (projectId to (byProject[projectId] ?: 0) + ms))
     }
+
+    /** Each focus track's whole blocks; leftover minutes don't carry over between tracks. */
+    fun focusBlocks(blockMs: Long): Int = Pillar.FOCUS.sumOf { completedBlocks(ms(it), blockMs) }
 }
 
 /**

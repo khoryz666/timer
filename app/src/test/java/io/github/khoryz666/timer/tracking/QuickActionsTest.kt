@@ -1,41 +1,44 @@
 package io.github.khoryz666.timer.tracking
 
-import io.github.khoryz666.timer.projects.Project
+import io.github.khoryz666.timer.tracking.StatusFixtures.running
+import io.github.khoryz666.timer.tracking.StatusFixtures.status
+import io.github.khoryz666.timer.tracking.StatusFixtures.totals
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class QuickActionsTest {
-    private val projects = listOf(Project(1, "KEFOS", 60), Project(2, "QorFinder", 40))
-
-    private fun labels(running: TrackTarget?, list: List<Project> = projects) = quickActions(running, list).map { it.label }
+    private fun labels(status: TodayStatus) = quickActions(status).map { it.label }
 
     @Test
-    fun `idle offers projects then Joy`() {
-        assertEquals(listOf("KEFOS", "QorFinder", "Joy"), labels(null))
+    fun `idle offers the track furthest from its target, then Joy, then the next track`() {
+        // Deep day: Project 5h to go, Reading 2h, NeetCode 1h.
+        assertEquals(listOf("QorFinder", "Joy", "Reading"), labels(status()))
     }
 
     @Test
-    fun `during Engine offers Stop, Joy, then the other project`() {
-        assertEquals(listOf("Stop", "Joy", "QorFinder"), labels(TrackTarget.Engine(1)))
+    fun `while running offers Stop, the furthest other track, then Joy`() {
+        val status = status(running(TrackTarget.Project(1)), totals(project = 150, neetCode = 60))
+        assertEquals(listOf("Stop", "Reading", "Joy"), labels(status))
     }
 
     @Test
-    fun `during Joy offers Stop then projects`() {
-        assertEquals(listOf("Stop", "KEFOS", "QorFinder"), labels(TrackTarget.Joy))
+    fun `during Joy offers Stop then the two furthest tracks`() {
+        assertEquals(listOf("Stop", "QorFinder", "Reading"), labels(status(running(TrackTarget.Joy))))
     }
 
     @Test
-    fun `never more than three actions`() {
-        val many = projects + Project(3, "Third", 0)
-        assertEquals(listOf("KEFOS", "QorFinder", "Third"), labels(null, many))
-        assertEquals(listOf("Stop", "Joy", "QorFinder"), labels(TrackTarget.Engine(1), many))
+    fun `when every target is met, tracks keep their order`() {
+        assertEquals(listOf("QorFinder", "Joy", "NeetCode"), labels(status(totals = totals(project = 300, neetCode = 60, reading = 120))))
     }
 
     @Test
-    fun `switch actions carry their target`() {
-        assertEquals(
-            QuickAction.Switch(TrackTarget.Engine(2), "QorFinder"),
-            quickActions(TrackTarget.Joy, projects)[2],
-        )
+    fun `the Project button starts the project with the largest share this week`() {
+        val action = quickActions(status()).first() as QuickAction.Switch
+        assertEquals(TrackTarget.Project(1), action.target)
+    }
+
+    @Test
+    fun `with no projects this week there is no Project button`() {
+        assertEquals(listOf("Reading", "Joy", "NeetCode"), labels(status(projects = emptyList())))
     }
 }

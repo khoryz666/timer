@@ -6,10 +6,11 @@ import org.junit.Test
 
 class NudgeTest {
     @Test
-    fun `nudges only when enabled, starting Joy, with no Engine block yet`() {
-        assertTrue(shouldNudge(enabled = true, starting = TrackTarget.Joy, engineBlocksToday = 0))
-        assertFalse(shouldNudge(enabled = false, starting = TrackTarget.Joy, engineBlocksToday = 0))
-        assertFalse(shouldNudge(enabled = true, starting = TrackTarget.Joy, engineBlocksToday = 1))
-        assertFalse(shouldNudge(enabled = true, starting = TrackTarget.Engine(1), engineBlocksToday = 0))
+    fun `nudges only when enabled, starting Joy, with no focus block yet`() {
+        assertTrue(shouldNudge(enabled = true, starting = TrackTarget.Joy, focusBlocksToday = 0))
+        assertFalse(shouldNudge(enabled = false, starting = TrackTarget.Joy, focusBlocksToday = 0))
+        assertFalse(shouldNudge(enabled = true, starting = TrackTarget.Joy, focusBlocksToday = 1))
+        assertFalse(shouldNudge(enabled = true, starting = TrackTarget.Project(1), focusBlocksToday = 0))
+        assertFalse(shouldNudge(enabled = true, starting = TrackTarget.Reading, focusBlocksToday = 0))
     }
 }

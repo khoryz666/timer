@@ -2,6 +2,7 @@ package io.github.khoryz666.timer.today
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.khoryz666.timer.day.DayType
 import io.github.khoryz666.timer.tracking.TodayStatus
 import io.github.khoryz666.timer.tracking.TrackTarget
 import io.github.khoryz666.timer.tracking.Tracker
@@ -21,5 +22,9 @@ class TodayViewModel(private val tracker: Tracker) : ViewModel() {
 
     fun stop() {
         viewModelScope.launch { tracker.stop() }
+    }
+
+    fun setDayType(type: DayType) {
+        viewModelScope.launch { tracker.setDayType(type) }
     }
 }

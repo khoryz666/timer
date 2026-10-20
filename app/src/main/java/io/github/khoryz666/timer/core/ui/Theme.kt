@@ -6,12 +6,16 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Engine = primary (indigo), Joy = secondary (coral), target met = tertiary (green).
+// Project = primary (indigo), Joy = secondary (coral), target met = tertiary (green);
+// NeetCode (teal) and Reading (violet) are in TrackPalette below.
 private val Light = lightColorScheme(
     primary = Color(0xFF3B5BDB),
     onPrimary = Color.White,
@@ -66,6 +70,26 @@ private val Dark = darkColorScheme(
     outlineVariant = Color(0xFF2E333C),
 )
 
+/** Colours for the focus tracks beyond Project, with the content colour to put on each. */
+@Immutable
+data class TrackPalette(val neetCode: Color, val onNeetCode: Color, val reading: Color, val onReading: Color)
+
+private val LightTracks = TrackPalette(
+    neetCode = Color(0xFF0C8599),
+    onNeetCode = Color.White,
+    reading = Color(0xFF9C36B5),
+    onReading = Color.White,
+)
+
+private val DarkTracks = TrackPalette(
+    neetCode = Color(0xFF66D9E8),
+    onNeetCode = Color(0xFF00363D),
+    reading = Color(0xFFE599F7),
+    onReading = Color(0xFF3D0E4A),
+)
+
+val LocalTrackPalette = staticCompositionLocalOf { LightTracks }
+
 private val TimerTypography = Typography().run {
     copy(
         displayMedium = displayMedium.copy(fontWeight = FontWeight.SemiBold, fontFeatureSettings = "tnum"),
@@ -83,9 +107,12 @@ val SmallCaps = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, le
 
 @Composable
 fun TimerTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = if (isSystemInDarkTheme()) Dark else Light,
-        typography = TimerTypography,
-        content = content,
-    )
+    val dark = isSystemInDarkTheme()
+    CompositionLocalProvider(LocalTrackPalette provides if (dark) DarkTracks else LightTracks) {
+        MaterialTheme(
+            colorScheme = if (dark) Dark else Light,
+            typography = TimerTypography,
+            content = content,
+        )
+    }
 }

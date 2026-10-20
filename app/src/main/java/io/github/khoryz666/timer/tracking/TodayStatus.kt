@@ -1,10 +1,13 @@
 package io.github.khoryz666.timer.tracking
 
+import io.github.khoryz666.timer.day.DayType
+import io.github.khoryz666.timer.day.DayTypeChoice
 import io.github.khoryz666.timer.projects.Project
+import io.github.khoryz666.timer.quota.DayTargets
 import io.github.khoryz666.timer.quota.DayTotals
-import io.github.khoryz666.timer.quota.EngineProgress
 import io.github.khoryz666.timer.quota.JoyProgress
 import io.github.khoryz666.timer.quota.QuotaSettings
+import io.github.khoryz666.timer.quota.TrackProgress
 import java.time.LocalDate
 
 /** Everything the Today screen and the notification show, computed at [now]. */
@@ -12,25 +15,50 @@ data class TodayStatus(
     val date: LocalDate,
     val now: Long,
     val running: Session?,
-    /** Active projects, in order. */
+    val dayType: DayType,
+    /** False until today's day type is picked; until then [dayType] is the latest earlier choice. */
+    val dayTypeChosen: Boolean,
+    val targets: DayTargets,
+    /** This week's projects, in order. */
     val projects: List<Project>,
-    /** Name of the running session's project (it may since have been archived). */
+    /** Name of the running session's project (it may since have left this week's plan). */
     val runningProjectName: String?,
     val totals: DayTotals,
-    val engine: EngineProgress,
+    /** Project, NeetCode and Reading, in that order. */
+    val tracks: List<TrackProgress>,
     val joy: JoyProgress,
 ) {
+    fun track(pillar: Pillar): TrackProgress = tracks.single { it.pillar == pillar }
+
+    /** The project a one-tap "Project" switch starts: the one with the largest share this week. */
+    val mainProject: Project? get() = projects.maxByOrNull { it.sharePercent }
+
     companion object {
-        fun of(date: LocalDate, now: Long, running: Session?, allProjects: List<Project>, totals: DayTotals, settings: QuotaSettings) =
-            TodayStatus(
+        fun of(
+            date: LocalDate,
+            now: Long,
+            running: Session?,
+            dayType: DayTypeChoice?,
+            projects: List<Project>,
+            projectNames: Map<Long, String>,
+            totals: DayTotals,
+            settings: QuotaSettings,
+        ): TodayStatus {
+            val type = dayType?.type ?: DayType.DEFAULT
+            val targets = settings.targets(type)
+            return TodayStatus(
                 date = date,
                 now = now,
                 running = running,
-                projects = allProjects.filterNot { it.archived },
-                runningProjectName = running?.projectId?.let { id -> allProjects.find { it.id == id }?.name },
+                dayType = type,
+                dayTypeChosen = dayType?.date == date,
+                targets = targets,
+                projects = projects,
+                runningProjectName = running?.projectId?.let(projectNames::get),
                 totals = totals,
-                engine = EngineProgress.of(totals.engineMs, settings),
+                tracks = Pillar.FOCUS.map { TrackProgress.of(it, totals.ms(it), targets, settings.blockMs) },
                 joy = JoyProgress.of(totals.joyMs, settings),
             )
+        }
     }
 }
