@@ -9,21 +9,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,17 +43,22 @@ import io.github.khoryz666.timer.core.ui.Numeric
 import io.github.khoryz666.timer.core.ui.ProgressBar
 import io.github.khoryz666.timer.core.ui.SectionCard
 import io.github.khoryz666.timer.core.ui.SectionLabel
+import io.github.khoryz666.timer.core.ui.StepButtons
 import io.github.khoryz666.timer.core.ui.appViewModel
 import io.github.khoryz666.timer.core.ui.pillarColor
+import io.github.khoryz666.timer.projects.Project
 import io.github.khoryz666.timer.quota.DaySummary
 import io.github.khoryz666.timer.quota.ProjectSplit
+import io.github.khoryz666.timer.quota.TrackWeek
 import io.github.khoryz666.timer.tracking.Pillar
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
 fun WeekRoute() {
-    val viewModel = appViewModel { WeekViewModel(it.database.sessions(), it.database.projects(), it.settings, it.clock) }
+    val viewModel = appViewModel {
+        WeekViewModel(it.database.sessions(), it.database.projects(), it.database.dayTypes(), it.settings, it.clock)
+    }
     val state by viewModel.state.collectAsStateWithLifecycle()
     var openDay by rememberSaveable { mutableStateOf<LocalDate?>(null) }
     val current = state ?: return
@@ -60,6 +67,12 @@ fun WeekRoute() {
         onPrevious = viewModel::previousWeek,
         onNext = viewModel::nextWeek,
         onDayClick = { openDay = it },
+        projectEdits = ProjectEdits(
+            add = viewModel::addProject,
+            rename = viewModel::renameProject,
+            setShare = viewModel::setShare,
+            remove = viewModel::removeProject,
+        ),
     )
     openDay?.let { day ->
         DaySheet(
@@ -73,6 +86,14 @@ fun WeekRoute() {
     }
 }
 
+/** Edits to the current week's project plan. */
+class ProjectEdits(
+    val add: (String) -> Unit,
+    val rename: (Project, String) -> Unit,
+    val setShare: (Project, Int) -> Unit,
+    val remove: (Project) -> Unit,
+)
+
 private val RangeStart = DateTimeFormatter.ofPattern("d MMM")
 private val DayName = DateTimeFormatter.ofPattern("EEE")
 private val DayNumber = DateTimeFormatter.ofPattern("d")
@@ -83,8 +104,10 @@ fun WeekScreen(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onDayClick: (LocalDate) -> Unit,
+    projectEdits: ProjectEdits,
 ) {
     val summary = state.summary
+    var editing by rememberSaveable { mutableStateOf<ProjectNameEdit?>(null) }
     Column(
         Modifier
             .fillMaxSize()
@@ -109,32 +132,25 @@ fun WeekScreen(
             }
         }
 
-        val engineColor = pillarColor(Pillar.ENGINE)
         SectionCard {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text("Engine", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                Text("${summary.engineBlocks}", style = MaterialTheme.typography.headlineMedium.merge(Numeric), color = engineColor)
+                Text("Focus", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                 Text(
-                    " / ${summary.weeklyTargetBlocks} blocks",
-                    style = MaterialTheme.typography.bodyLarge,
+                    "${formatDuration(summary.focusMs)} focused",
+                    style = MaterialTheme.typography.bodyMedium.merge(Numeric),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 3.dp),
                 )
             }
-            Spacer(Modifier.height(12.dp))
-            ProgressBar(summary.engineBlocks.toFloat() / summary.weeklyTargetBlocks, engineColor)
+            summary.tracks.forEach { TrackRow(it) }
             Spacer(Modifier.height(8.dp))
             Text(
-                "${formatDuration(summary.engineMs)} focused",
-                style = MaterialTheme.typography.bodyMedium,
+                "Weekly targets add up each day's targets, set by its day type.",
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (summary.split.isNotEmpty()) {
-                Spacer(Modifier.height(20.dp))
-                SectionLabel("Project split")
-                summary.split.forEach { ProjectSplitRow(it) }
-            }
         }
+
+        ProjectsCard(state, projectEdits, onRename = { editing = ProjectNameEdit(it.id, it.name) }, onAdd = { editing = ProjectNameEdit(null, "") })
 
         val joyColor = pillarColor(Pillar.JOY)
         val daysSoFar = if (state.isCurrentWeek) state.today.dayOfWeek.value else 7
@@ -160,27 +176,134 @@ fun WeekScreen(
             }
         }
     }
+
+    editing?.let { edit ->
+        ProjectNameDialog(
+            initial = edit.name,
+            isNew = edit.projectId == null,
+            onDismiss = { editing = null },
+            onConfirm = { name ->
+                val project = state.plan.find { it.id == edit.projectId }
+                if (project == null) projectEdits.add(name) else projectEdits.rename(project, name)
+                editing = null
+            },
+        )
+    }
+}
+
+private data class ProjectNameEdit(val projectId: Long?, val name: String) : java.io.Serializable
+
+@Composable
+private fun TrackRow(track: TrackWeek) {
+    val color = pillarColor(track.pillar)
+    Column(Modifier.padding(top = 16.dp)) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(track.pillar.label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Text("${track.blocks}", style = MaterialTheme.typography.titleLarge.merge(Numeric), color = color)
+            Text(
+                " / ${track.targetBlocks} blocks",
+                style = MaterialTheme.typography.bodyMedium.merge(Numeric),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 2.dp),
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        ProgressBar(if (track.targetBlocks == 0) 0f else track.blocks.toFloat() / track.targetBlocks, color)
+    }
+}
+
+/** The week's project split; for the current week, also where its project list is edited. */
+@Composable
+private fun ProjectsCard(state: WeekState, edits: ProjectEdits, onRename: (Project) -> Unit, onAdd: () -> Unit) {
+    val editable = state.isCurrentWeek
+    val planned = state.plan.map { it.id }.toSet()
+    SectionCard {
+        SectionLabel(if (editable) "Projects this week" else "Projects")
+        state.summary.split.forEach { split ->
+            ProjectSplitRow(
+                split = split,
+                editable = editable && split.project.id in planned,
+                canRemove = state.plan.size > 1,
+                onRename = { onRename(split.project) },
+                onShareChange = { edits.setShare(split.project, it) },
+                onRemove = { edits.remove(split.project) },
+            )
+        }
+        if (editable) {
+            if (state.shareTotal != 100) {
+                Text(
+                    "Shares add up to ${state.shareTotal}%; targets are scaled to 100%.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            TextButton(onClick = onAdd, modifier = Modifier.padding(top = 4.dp)) {
+                Icon(Icons.Filled.Add, contentDescription = null)
+                Text("Add project", modifier = Modifier.padding(start = 8.dp))
+            }
+            Text(
+                "Changes apply from this week on; earlier weeks keep their own list.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 @Composable
-private fun ProjectSplitRow(split: ProjectSplit) {
+private fun ProjectSplitRow(
+    split: ProjectSplit,
+    editable: Boolean,
+    canRemove: Boolean,
+    onRename: () -> Unit,
+    onShareChange: (Int) -> Unit,
+    onRemove: () -> Unit,
+) {
+    val project = split.project
     Column(Modifier.padding(top = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(split.project.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Text(formatPercent(split.actualShare), style = MaterialTheme.typography.titleMedium.merge(Numeric))
-            Text(
-                "  target ${formatPercent(split.targetShare)}",
-                style = MaterialTheme.typography.bodySmall.merge(Numeric),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column(Modifier.weight(1f).clickable(enabled = editable, onClick = onRename).padding(vertical = 4.dp)) {
+                Text(project.name, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "${formatPercent(split.actualShare)} · target ${formatPercent(split.targetShare)}",
+                    style = MaterialTheme.typography.bodySmall.merge(Numeric),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (editable) {
+                StepButtons(
+                    "${project.sharePercent}%",
+                    onMinus = { onShareChange(project.sharePercent - 5) }.takeIf { project.sharePercent > 0 },
+                    onPlus = { onShareChange(project.sharePercent + 5) }.takeIf { project.sharePercent < 100 },
+                    minValueWidth = 52,
+                )
+                IconButton(onClick = onRemove, enabled = canRemove) {
+                    Icon(Icons.Outlined.Delete, contentDescription = "Remove ${project.name} from this week")
+                }
+            }
         }
         Spacer(Modifier.height(6.dp))
         ProgressBar(
             split.actualShare.toFloat(),
-            pillarColor(Pillar.ENGINE),
+            pillarColor(Pillar.PROJECT),
             marker = split.targetShare.toFloat().takeIf { it > 0f },
         )
     }
+}
+
+@Composable
+private fun ProjectNameDialog(initial: String, isNew: Boolean, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var name by rememberSaveable { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (isNew) "New project this week" else "Rename project") },
+        text = { OutlinedTextField(value = name, onValueChange = { name = it }, singleLine = true, label = { Text("Name") }) },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) { Text(if (isNew) "Add" else "Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -202,10 +325,20 @@ private fun DayRow(day: DaySummary, isFuture: Boolean, isToday: Boolean, onClick
             Text(day.date.format(DayNumber), style = MaterialTheme.typography.titleMedium)
         }
         Spacer(Modifier.width(12.dp))
-        BlockDots(day.engineBlocks)
-        Spacer(Modifier.weight(1f))
+        Column(Modifier.weight(1f)) {
+            Text(day.dayType.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Pillar.FOCUS.forEach { pillar ->
+                    Text(
+                        "${pillar.shortLabel} ${day.blocks.getValue(pillar)}/${day.targets.getValue(pillar)}",
+                        style = MaterialTheme.typography.bodySmall.merge(Numeric),
+                        color = pillarColor(pillar),
+                    )
+                }
+            }
+        }
         Column(horizontalAlignment = Alignment.End) {
-            LabelledTime("Engine", day.totals.engineMs, Pillar.ENGINE)
+            LabelledTime("Focus", day.totals.focusMs, Pillar.PROJECT)
             LabelledTime("Joy", day.totals.joyMs, Pillar.JOY)
         }
     }
@@ -221,21 +354,6 @@ private fun LabelledTime(label: String, ms: Long, pillar: Pillar) {
             color = pillarColor(pillar),
             textAlign = TextAlign.End,
             modifier = Modifier.widthIn(min = 64.dp),
-        )
-    }
-}
-
-@Composable
-private fun BlockDots(blocks: Int) {
-    val color = pillarColor(Pillar.ENGINE)
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-        repeat(minOf(blocks, 6)) { Surface(Modifier.size(10.dp), shape = CircleShape, color = color) {} }
-        Text(
-            if (blocks == 1) "1 block" else "$blocks blocks",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Start,
-            modifier = Modifier.widthIn(min = 56.dp).padding(start = 4.dp),
         )
     }
 }

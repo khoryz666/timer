@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.khoryz666.timer.core.AppClock
 import io.github.khoryz666.timer.core.AppDatabase
+import io.github.khoryz666.timer.day.DayPrompter
 import io.github.khoryz666.timer.settings.SettingsStore
 import io.github.khoryz666.timer.tracking.Tracker
 import io.github.khoryz666.timer.tracking.TrackingNotifications
@@ -29,7 +30,8 @@ class AppGraph(context: Context) {
     val database by lazy { AppDatabase.build(app) }
     val settings by lazy { SettingsStore(app.settingsDataStore) }
     val notifications by lazy { TrackingNotifications(app) }
-    val tracker by lazy { Tracker(database.sessions(), database.projects(), settings, clock, notifications) }
+    val tracker by lazy { Tracker(database.sessions(), database.projects(), database.dayTypes(), settings, clock, notifications) }
+    val dayPrompter by lazy { DayPrompter(database.dayTypes(), settings, clock, notifications) }
 
     val releases by lazy { GitHubReleases(UPDATE_REPO, "Timer/${BuildConfig.VERSION_NAME}") }
     val installer by lazy { ApkInstaller(app) }

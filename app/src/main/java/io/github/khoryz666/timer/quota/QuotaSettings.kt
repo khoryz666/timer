@@ -1,35 +1,67 @@
 package io.github.khoryz666.timer.quota
 
 import io.github.khoryz666.timer.core.minutesToMs
+import io.github.khoryz666.timer.day.DayType
+import io.github.khoryz666.timer.tracking.Pillar
 
-/** Daily and weekly targets. Defaults: 4 x 90-min Engine blocks (floor 2), 24 a week, 4h Joy. */
+/** One day type's targets, in blocks. Only Project has a floor. */
+data class DayTargets(
+    val projectFloor: Int,
+    val project: Int,
+    val neetCode: Int,
+    val reading: Int,
+) {
+    fun target(pillar: Pillar): Int = when (pillar) {
+        Pillar.PROJECT -> project
+        Pillar.NEETCODE -> neetCode
+        Pillar.READING -> reading
+        Pillar.JOY -> error("Joy has no block target")
+    }
+
+    fun floor(pillar: Pillar): Int = if (pillar == Pillar.PROJECT) projectFloor else 0
+
+    fun sanitized(): DayTargets {
+        val project = project.coerceIn(QuotaSettings.TRACK_BLOCKS)
+        return DayTargets(
+            projectFloor = projectFloor.coerceIn(0, project),
+            project = project,
+            neetCode = neetCode.coerceIn(QuotaSettings.TRACK_BLOCKS),
+            reading = reading.coerceIn(QuotaSettings.TRACK_BLOCKS),
+        )
+    }
+}
+
+/** Block length, each day type's targets, and the daily Joy target (4h by default). */
 data class QuotaSettings(
-    val blockMinutes: Int = 90,
-    val floorBlocks: Int = 2,
-    val targetBlocks: Int = 4,
-    val weeklyTargetBlocks: Int = 24,
+    val blockMinutes: Int = 60,
+    val dayTargets: Map<DayType, DayTargets> = DEFAULT_TARGETS,
     val joyTargetMinutes: Int = 240,
 ) {
     val blockMs: Long get() = minutesToMs(blockMinutes)
-    val engineTargetMs: Long get() = targetBlocks * blockMs
     val joyTargetMs: Long get() = minutesToMs(joyTargetMinutes)
 
-    /** Clamps every value to a usable range and keeps the floor at or below the target. */
-    fun sanitized(): QuotaSettings {
-        val target = targetBlocks.coerceIn(TARGET_BLOCKS)
-        return QuotaSettings(
-            blockMinutes = blockMinutes.coerceIn(BLOCK_MINUTES),
-            floorBlocks = floorBlocks.coerceIn(0, target),
-            targetBlocks = target,
-            weeklyTargetBlocks = weeklyTargetBlocks.coerceIn(WEEKLY_TARGET_BLOCKS),
-            joyTargetMinutes = joyTargetMinutes.coerceIn(JOY_TARGET_MINUTES),
-        )
-    }
+    fun targets(type: DayType): DayTargets = dayTargets[type] ?: DEFAULT_TARGETS.getValue(type)
+
+    fun withTargets(type: DayType, transform: (DayTargets) -> DayTargets) =
+        copy(dayTargets = dayTargets + (type to transform(targets(type))))
+
+    /** Clamps every value to a usable range and keeps each floor at or below its target. */
+    fun sanitized() = QuotaSettings(
+        blockMinutes = blockMinutes.coerceIn(BLOCK_MINUTES),
+        dayTargets = DayType.entries.associateWith { targets(it).sanitized() },
+        joyTargetMinutes = joyTargetMinutes.coerceIn(JOY_TARGET_MINUTES),
+    )
 
     companion object {
         val BLOCK_MINUTES = 15..240
-        val TARGET_BLOCKS = 1..12
-        val WEEKLY_TARGET_BLOCKS = 1..84
+        val TRACK_BLOCKS = 0..12
         val JOY_TARGET_MINUTES = 0..720
+
+        /** From the semester routine: Tue-Thu are Deep, Mon/Fri Class, weekends Light. */
+        val DEFAULT_TARGETS = mapOf(
+            DayType.LIGHT to DayTargets(projectFloor = 1, project = 3, neetCode = 0, reading = 0),
+            DayType.CLASS to DayTargets(projectFloor = 2, project = 3, neetCode = 1, reading = 1),
+            DayType.DEEP to DayTargets(projectFloor = 3, project = 5, neetCode = 1, reading = 2),
+        )
     }
 }

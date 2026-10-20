@@ -11,10 +11,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.khoryz666.timer.quota.QuotaStatus
 import io.github.khoryz666.timer.tracking.Pillar
@@ -31,8 +36,20 @@ import io.github.khoryz666.timer.tracking.Pillar
 @Composable
 @ReadOnlyComposable
 fun pillarColor(pillar: Pillar): Color = when (pillar) {
-    Pillar.ENGINE -> MaterialTheme.colorScheme.primary
+    Pillar.PROJECT -> MaterialTheme.colorScheme.primary
+    Pillar.NEETCODE -> LocalTrackPalette.current.neetCode
+    Pillar.READING -> LocalTrackPalette.current.reading
     Pillar.JOY -> MaterialTheme.colorScheme.secondary
+}
+
+/** The content colour for text and icons on [pillarColor]. */
+@Composable
+@ReadOnlyComposable
+fun onPillarColor(pillar: Pillar): Color = when (pillar) {
+    Pillar.PROJECT -> MaterialTheme.colorScheme.onPrimary
+    Pillar.NEETCODE -> LocalTrackPalette.current.onNeetCode
+    Pillar.READING -> LocalTrackPalette.current.onReading
+    Pillar.JOY -> MaterialTheme.colorScheme.onSecondary
 }
 
 /** A rounded card; [accent] draws a coloured outline (used for whatever is running). */
@@ -135,3 +152,56 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
         modifier = modifier,
     )
 }
+
+/** A labelled value with -/+ buttons; a null callback disables that button. */
+@Composable
+fun Stepper(
+    label: String,
+    value: String,
+    onMinus: (() -> Unit)?,
+    onPlus: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    supporting: String? = null,
+) {
+    Row(modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            if (supporting != null) {
+                Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        StepButtons(value, onMinus, onPlus)
+    }
+}
+
+/** − value + ; a null callback disables that button. */
+@Composable
+fun StepButtons(value: String, onMinus: (() -> Unit)?, onPlus: (() -> Unit)?, minValueWidth: Int = 84) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        StepButton(onClick = { onMinus?.invoke() }, enabled = onMinus != null) { Text("−", style = MaterialTheme.typography.titleMedium) }
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyLarge.merge(Numeric),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.widthIn(min = minValueWidth.dp),
+        )
+        StepButton(onClick = { onPlus?.invoke() }, enabled = onPlus != null) { Text("+", style = MaterialTheme.typography.titleMedium) }
+    }
+}
+
+/** A neutral -/+ button, so settings don't borrow a pillar colour. */
+@Composable
+private fun StepButton(onClick: () -> Unit, enabled: Boolean, content: @Composable () -> Unit) {
+    FilledTonalIconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(40.dp),
+        colors = IconButtonDefaults.filledTonalIconButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+        content = content,
+    )
+}
+
+fun blocksLabel(count: Int) = if (count == 1) "1 block" else "$count blocks"

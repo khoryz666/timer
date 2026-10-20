@@ -3,6 +3,8 @@ package io.github.khoryz666.timer.week
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.khoryz666.timer.core.AppClock
+import io.github.khoryz666.timer.day.DayTypeDao
+import io.github.khoryz666.timer.projects.Project
 import io.github.khoryz666.timer.projects.ProjectDao
 import io.github.khoryz666.timer.quota.WeekSummary
 import io.github.khoryz666.timer.quota.weekStart
@@ -27,14 +29,18 @@ data class WeekState(
     /** Sessions attributed to each day of the week. */
     val sessionsByDay: Map<LocalDate, List<Session>>,
     val projectNames: Map<Long, String>,
+    /** The week's project plan. */
+    val plan: List<Project>,
 ) {
     val isCurrentWeek: Boolean get() = today.weekStart() == summary.weekStart
+    val shareTotal: Int get() = plan.sumOf { it.sharePercent }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WeekViewModel(
     private val sessions: SessionDao,
-    projects: ProjectDao,
+    private val projects: ProjectDao,
+    dayTypes: DayTypeDao,
     settings: SettingsStore,
     private val clock: AppClock,
 ) : ViewModel() {
@@ -43,18 +49,21 @@ class WeekViewModel(
 
     val state: StateFlow<WeekState?> = weekStart.flatMapLatest { start ->
         val range = clock.bounds(start, start.plusWeeks(1))
+        val plan = combine(projects.observeWeek(start), projects.observeAll(), dayTypes.observeInForce(start, start.plusWeeks(1)), ::Triple)
         combine(
             sessions.observeEndingIn(range.start, range.end),
-            projects.observeAll(),
+            plan,
             settings.quota,
             clock.ticks(60_000),
-        ) { weekSessions, allProjects, quota, now ->
+        ) { weekSessions, (weekPlan, allProjects, choices), quota, now ->
+            val names = allProjects.associate { it.id to it.name }
             WeekState(
-                summary = WeekSummary.of(start, weekSessions, allProjects, quota, now, clock),
+                summary = WeekSummary.of(start, weekSessions, weekPlan, names, choices, quota, now, clock),
                 today = clock.dateOf(now),
                 now = now,
                 sessionsByDay = weekSessions.groupBy { clock.dateOf(it.endOrNow(now)) },
-                projectNames = allProjects.associate { it.id to it.name },
+                projectNames = names,
+                plan = weekPlan,
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -65,5 +74,19 @@ class WeekViewModel(
 
     fun delete(session: Session) {
         viewModelScope.launch { sessions.deleteFinished(session.id) }
+    }
+
+    // Project edits only ever apply to the current week; earlier weeks keep their own plans.
+
+    fun addProject(name: String) = editThisWeek { projects.add(it, name.trim()) }
+
+    fun renameProject(project: Project, name: String) = editThisWeek { projects.rename(project.id, name.trim()) }
+
+    fun setShare(project: Project, percent: Int) = editThisWeek { projects.setShare(it, project.id, percent) }
+
+    fun removeProject(project: Project) = editThisWeek { projects.remove(it, project.id) }
+
+    private fun editThisWeek(edit: suspend (LocalDate) -> Unit) {
+        viewModelScope.launch { edit(clock.today().weekStart()) }
     }
 }
