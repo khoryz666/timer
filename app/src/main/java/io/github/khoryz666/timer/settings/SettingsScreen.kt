@@ -111,16 +111,6 @@ private fun SettingsScreen(
             }
         }
 
-        SectionCard {
-            SectionLabel("Projects")
-            Text(
-                "Projects and their shares are planned per week, on the Week screen.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
-
         SectionCard(content = updates)
     }
 }

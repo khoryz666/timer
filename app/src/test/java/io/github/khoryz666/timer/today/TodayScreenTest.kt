@@ -45,7 +45,7 @@ class TodayScreenTest {
 
         compose.onNodeWithText("Deep day").assertExists()
         compose.onNodeWithText("Targets: Project 5 · NeetCode 1 · Reading 2 blocks").assertExists()
-        compose.onNodeWithText("NOT TRACKING").assertExists()
+        compose.onNodeWithText("Not tracking").assertExists()
         compose.onNodeWithText("/ 5 blocks", substring = true).assertExists()
         compose.onNodeWithText("Floor met").assertExists()
         compose.onNodeWithText("3h 20m of 5h").assertExists()
@@ -83,6 +83,7 @@ class TodayScreenTest {
         show(StatusFixtures.status(running, totals(project = 75), now = 200 * MINUTE))
 
         compose.onNodeWithText("PROJECT · QORFINDER").assertExists()
+        compose.onNodeWithText("Not tracking").assertDoesNotExist()
         compose.onNodeWithText("1:15:00").assertExists()
         compose.onNodeWithText("QorFinder").assertIsNotEnabled()
         compose.onNodeWithText("Stop").performClick()

@@ -60,6 +60,7 @@ import io.github.khoryz666.timer.day.DayType
 import io.github.khoryz666.timer.projects.Project
 import io.github.khoryz666.timer.quota.QuotaStatus
 import io.github.khoryz666.timer.tracking.Pillar
+import io.github.khoryz666.timer.tracking.Session
 import io.github.khoryz666.timer.tracking.TodayStatus
 import io.github.khoryz666.timer.tracking.TrackTarget
 import java.time.format.DateTimeFormatter
@@ -85,7 +86,7 @@ fun TodayScreen(status: TodayStatus, onSwitch: (TrackTarget) -> Unit, onStop: ()
     ) {
         Header(status)
         DayTypeCard(status, onDayType)
-        NowCard(status, onStop)
+        status.running?.let { NowCard(status, it, onStop) }
         ProjectCard(status, onSwitch)
         Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SmallTrackCard(status, Pillar.NEETCODE, TrackTarget.NeetCode, onSwitch, Modifier.weight(1f).fillMaxHeight())
@@ -98,11 +99,23 @@ fun TodayScreen(status: TodayStatus, onSwitch: (TrackTarget) -> Unit, onStop: ()
 private val DayFormat = DateTimeFormatter.ofPattern("EEEE")
 private val DateFormat = DateTimeFormatter.ofPattern("d MMMM")
 
+/** The date, with "Not tracking" beside it while nothing runs (a running session gets its own card). */
 @Composable
 private fun Header(status: TodayStatus) {
-    Column(Modifier.padding(horizontal = 4.dp, vertical = 8.dp)) {
-        Text(status.date.format(DayFormat), style = MaterialTheme.typography.headlineSmall)
-        Text(status.date.format(DateFormat), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Row(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(status.date.format(DayFormat), style = MaterialTheme.typography.headlineSmall)
+            Text(status.date.format(DateFormat), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (status.running == null) {
+            Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(Modifier.size(8.dp), shape = CircleShape, color = MaterialTheme.colorScheme.outline) {}
+                    Spacer(Modifier.width(8.dp))
+                    Text("Not tracking", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
     }
 }
 
@@ -161,43 +174,28 @@ private fun DayTypeCard(status: TodayStatus, onDayType: (DayType) -> Unit) {
 }
 
 @Composable
-private fun NowCard(status: TodayStatus, onStop: () -> Unit) {
-    val running = status.running
-    val color = running?.let { pillarColor(it.pillar) }
+private fun NowCard(status: TodayStatus, running: Session, onStop: () -> Unit) {
+    val color = pillarColor(running.pillar)
     SectionCard(accent = color) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(Modifier.size(8.dp), shape = CircleShape, color = color ?: MaterialTheme.colorScheme.outline) {}
+                    Surface(Modifier.size(8.dp), shape = CircleShape, color = color) {}
                     Spacer(Modifier.width(8.dp))
                     SectionLabel(
-                        when (running?.pillar) {
-                            Pillar.PROJECT -> "Project · ${status.runningProjectName}"
-                            null -> "Not tracking"
-                            else -> running.pillar.label
-                        }
+                        if (running.pillar == Pillar.PROJECT) "Project · ${status.runningProjectName}" else running.pillar.label
                     )
                 }
                 Spacer(Modifier.height(4.dp))
-                if (running != null) {
-                    Text(formatElapsed(running.durationMs(status.now)), style = MaterialTheme.typography.displayMedium)
-                } else {
-                    Text(
-                        "Tap a project, NeetCode, Reading or Joy to start.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Text(formatElapsed(running.durationMs(status.now)), style = MaterialTheme.typography.displayMedium)
             }
-            if (running != null) {
-                Button(
-                    onClick = onStop,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                ) { Text("Stop") }
-            }
+            Button(
+                onClick = onStop,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                ),
+            ) { Text("Stop") }
         }
     }
 }
