@@ -3,6 +3,13 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.2] - 2026-10-21
+
+### Fixed
+- The notification only had room for three buttons, so some projects and tracks had
+  none. Its expanded view now has a button for every one of this week's projects, plus
+  NeetCode, Reading and Joy (and Stop while something runs), always in the same order.
+
 ## [2.1.1] - 2026-10-21
 
 ### Changed
