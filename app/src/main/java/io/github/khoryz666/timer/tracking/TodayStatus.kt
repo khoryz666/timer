@@ -30,9 +30,6 @@ data class TodayStatus(
 ) {
     fun track(pillar: Pillar): TrackProgress = tracks.single { it.pillar == pillar }
 
-    /** The project a one-tap "Project" switch starts: the one with the largest share this week. */
-    val mainProject: Project? get() = projects.maxByOrNull { it.sharePercent }
-
     companion object {
         fun of(
             date: LocalDate,

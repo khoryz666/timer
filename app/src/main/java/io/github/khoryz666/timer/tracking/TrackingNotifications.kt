@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.view.View
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import io.github.khoryz666.timer.MainActivity
 import io.github.khoryz666.timer.R
@@ -47,9 +49,6 @@ class TrackingNotifications(private val context: Context) : TrackerNotices, DayP
             .setSilent(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-        if (content.lines.isNotEmpty()) {
-            builder.setStyle(NotificationCompat.BigTextStyle().bigText(content.lines.joinToString("\n")))
-        }
         if (content.runningSince != null) {
             builder.setCategory(NotificationCompat.CATEGORY_STOPWATCH)
                 .setWhen(content.runningSince)
@@ -58,8 +57,34 @@ class TrackingNotifications(private val context: Context) : TrackerNotices, DayP
         } else {
             builder.setShowWhen(false)
         }
-        content.actions.forEach { builder.addAction(0, it.label, TrackingService.actionIntent(context, it)) }
+        // Standard actions stop at three, so the expanded view draws its own buttons - one per switch.
+        if (content.lines.isNotEmpty() || content.actions.isNotEmpty()) {
+            builder.setStyle(NotificationCompat.DecoratedCustomViewStyle())
+                .setCustomBigContentView(expandedView(content))
+        }
         return builder.build()
+    }
+
+    private fun expandedView(content: NotificationContent): RemoteViews {
+        val view = RemoteViews(context.packageName, R.layout.notification_expanded)
+        view.setTextViewText(R.id.lines, content.lines.joinToString("\n"))
+        content.actions.take(MAX_BUTTONS).chunked(BUTTONS_PER_ROW).forEach { actions ->
+            val row = RemoteViews(context.packageName, R.layout.notification_button_row)
+            repeat(BUTTONS_PER_ROW) { index ->
+                val button = RemoteViews(context.packageName, R.layout.notification_button)
+                val action = actions.getOrNull(index)
+                if (action == null) {
+                    // An invisible filler keeps a short last row's buttons the same width as the others.
+                    button.setViewVisibility(R.id.button, View.INVISIBLE)
+                } else {
+                    button.setTextViewText(R.id.button, action.label)
+                    button.setOnClickPendingIntent(R.id.button, TrackingService.actionIntent(context, action))
+                }
+                row.addView(R.id.row, button)
+            }
+            view.addView(R.id.buttons, row)
+        }
+        return view
     }
 
     fun postTracking(content: NotificationContent) = manager.notify(TRACKING_ID, tracking(content))
@@ -98,6 +123,10 @@ class TrackingNotifications(private val context: Context) : TrackerNotices, DayP
 
     companion object {
         const val TRACKING_ID = 1
+        private const val BUTTONS_PER_ROW = 3
+
+        // Four rows; with the track lines that still fits Android's 256dp limit for an expanded view.
+        private const val MAX_BUTTONS = 4 * BUTTONS_PER_ROW
         private const val NUDGE_ID = 2
         private const val DAY_PROMPT_ID = 3
         private const val TRACKING_CHANNEL = "tracking"
