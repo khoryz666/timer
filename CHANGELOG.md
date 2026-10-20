@@ -3,6 +3,15 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.1] - 2026-10-21
+
+### Changed
+- Today: when nothing is running, "Not tracking" sits beside the date instead of
+  taking a card of its own; the stopwatch card only appears while something runs.
+
+### Removed
+- The Projects note in Settings; projects are edited on the Week screen.
+
 ## [2.1.0] - 2026-10-21
 
 Day types and three focus tracks. Updating from 2.0 keeps all data: Engine time
