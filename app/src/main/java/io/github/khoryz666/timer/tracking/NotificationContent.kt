@@ -6,8 +6,9 @@ import io.github.khoryz666.timer.quota.TrackProgress
 
 /**
  * What the persistent notification shows. Collapsed: [title] and the one-line [text]; expanded:
- * one of [lines] per track. The day type goes in the header ([dayType]), so the collapsed line
- * fits a phone's width. The elapsed time itself is a system chronometer.
+ * one of [lines] per track, then a button for each of [actions]. The day type goes in the
+ * header ([dayType]), so the collapsed line fits a phone's width. The elapsed time itself is a
+ * system chronometer.
  */
 data class NotificationContent(
     val title: String,

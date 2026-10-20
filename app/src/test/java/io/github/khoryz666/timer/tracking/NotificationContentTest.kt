@@ -22,7 +22,7 @@ class NotificationContentTest {
             content.lines,
         )
         assertEquals(1234L, content.runningSince)
-        assertEquals(listOf("Stop", "Reading", "Joy"), content.actions.map { it.label })
+        assertEquals(listOf("Stop", "KEFOS", "NeetCode", "Reading", "Joy"), content.actions.map { it.label })
     }
 
     @Test
